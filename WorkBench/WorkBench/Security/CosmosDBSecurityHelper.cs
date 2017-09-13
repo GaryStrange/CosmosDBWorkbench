@@ -5,11 +5,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WorkBench.DataAccess;
 
 namespace WorkBench.Security
 {
     public static class CosmosDBSecurityHelper
     {
+        public static async Task<User> CreateUserIfNotExistAsync(DocumentCollectionContext context, string userId)
+        {
+            return await CreateUserIfNotExistAsync(context.Client, context.Config.databaseName, userId);
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -38,6 +43,18 @@ namespace WorkBench.Security
 
             return docUser;
 
+        }
+
+        public static async Task<ResourceResponse<Permission>> GrantUserPermissionAsync(
+            DocumentCollectionContext context,
+            User user,
+            Resource resource = null,
+            PermissionMode mode = PermissionMode.Read,
+            int? resourceTokenExpirySeconds = null
+            )
+        {
+            resource = resource ?? context.Collection;
+            return await GrantUserPermissionAsync(context.Client, context.Config.databaseName, user, resource, mode, resourceTokenExpirySeconds);
         }
 
         public static async Task<ResourceResponse<Permission>> GrantUserPermissionAsync(

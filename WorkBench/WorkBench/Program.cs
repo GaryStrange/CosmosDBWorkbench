@@ -23,7 +23,6 @@ namespace WorkBench
 
             Configuration = builder.Build();
 
-            //Action<int> print = (int x) => { Console.WriteLine(x); };
             Action<string> print = (string s) => { Console.WriteLine("{0} = {1}", s,  Configuration[s]); };
             print("EndPointUrl");
             print("DatabaseName");
@@ -38,7 +37,7 @@ namespace WorkBench
                 Configuration["PartitionKeyPath"]
                 );
 
-            var testContext =
+            var masterKeyContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     config
                 );
@@ -48,17 +47,17 @@ namespace WorkBench
                 userid = "gary.strange2"
             };
 
-            customerProfile = CosmosDbHelper.CreateDocument(testContext, customerProfile);
+            customerProfile = CosmosDbHelper.CreateDocument(masterKeyContext, customerProfile);
 
-            //var u = CosmosDBSecurityHelper.CreateUserIfNotExistAsync(testContext.Client, testContext.Config.databaseName, "gary.strange2");
+            var u = CosmosDBSecurityHelper.CreateUserIfNotExistAsync(masterKeyContext, "gary.strange2");
 
-            //u.Wait();
+            u.Wait();
 
 
-            //var p = CosmosDBSecurityHelper.GrantUserPermissionAsync(testContext.Client, testContext.Config.databaseName, u.Result, testContext.Collection);
-            //p.Wait();
+            var p = CosmosDBSecurityHelper.GrantUserPermissionAsync(masterKeyContext, u.Result);
+            p.Wait();
 
-            //Console.WriteLine("Using read context get user permissions");
+            Console.WriteLine("Using read context get user permissions");
             //var perms = CosmosDBSecurityHelper.GetUserPermissions(testContext.Client, u.Result);
             //foreach (var perm in perms)
             //{
@@ -66,41 +65,30 @@ namespace WorkBench
 
             //}
 
-            
-            //Debug.WriteLine(string.Format("Token: {0}", p.Result.Resource.Token));
+
+            Debug.WriteLine(string.Format("Token: {0}", p.Result.Resource.Token));
 
             var configToken = CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
                 Configuration["EndPointUrl"],
-                "type=resource&ver=1&sig=NCwcbegxynO4oSoc5+PiiQ==;dqak+owvvd4XHBtGbtNQrjKgsiZXXrwvtnnDP5UjUhlXj2sRK5W9arm5ahQ+5AqtyAH/Y5GBvrg9ml7w0wcNtlh+V8rZ0i2maXvddy8vC2wqTxm76bttkFaKBr6B/cbLJEq2V5sth6Q5Bo57LII6BJdrYd6OIV3X2MegzlGKLqxTdC24462h6kLCQMjDw3Sg5uoHXEgw1zxG8gLYorGu6TJoL01o75qQUYVSqBswvcMA/KrZk1T7VkdjWdirYXN9;",
+                p.Result.Resource.Token,
                 Configuration["DatabaseName"],
                 Configuration["CollectionName"],
                 Configuration["PartitionKeyPath"]
                 );
 
-            var readContext =
+            var readOnlyContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     configToken
                 );
 
 
             CustomerProfile customerProfileRead;
-            customerProfileRead = CosmosDbHelper.ReadDocument<CustomerProfile>(testContext, customerProfile.Id, customerProfile.PartitionKeyValue);
-            customerProfileRead = CosmosDbHelper.ReadDocument<CustomerProfile>(readContext, customerProfile.Id, customerProfile.PartitionKeyValue);
+            customerProfileRead = CosmosDbHelper.ReadDocument<CustomerProfile>(masterKeyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
+            customerProfileRead = CosmosDbHelper.ReadDocument<CustomerProfile>(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
 
-            //customerProfile = CosmosDbHelper.CreateDocument(readContext, customerProfile);
+            // Fails with expected 403 status code
+            customerProfile = CosmosDbHelper.CreateDocument(readOnlyContext, customerProfile);
 
-            //Console.WriteLine($"option1 = {Configuration["option1"]}");
-            //Console.WriteLine($"option2 = {Configuration["option2"]}");
-            //Console.WriteLine(
-            //    $"suboption1 = {Configuration["subsection:suboption1"]}");
-            //Console.WriteLine();
-
-            //Console.WriteLine("Wizards:");
-            //Console.Write($"{Configuration["wizards:0:Name"]}, ");
-            //Console.WriteLine($"age {Configuration["wizards:0:Age"]}");
-            //Console.Write($"{Configuration["wizards:1:Name"]}, ");
-            //Console.WriteLine($"age {Configuration["wizards:1:Age"]}");
-            Console.WriteLine("Hello World!");
             Console.ReadKey();
         }
 
