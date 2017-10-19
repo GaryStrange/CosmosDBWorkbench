@@ -197,21 +197,48 @@ namespace WorkBench.DataAccess
         }
 
 
-        public static T ReadDocument<T>(ICollectionContext context, String documentId
+        public static async Task<DocumentResponse<T>> ReadDocument<T>(ICollectionContext context, String documentId
             , object partitionKeyValue = null
             ) where T : Document
         {
             Uri docUri = context.DocumentUri(documentId);
 
-            var response = context.ProcessResourceResponse(
-                String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue),
-                context.Client.ReadDocumentAsync(
-                    docUri
-                    , new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
-                    )
-                .Result);
+            //var response = context.ProcessResourceResponse(
+            //    String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue),
+            //    context.Client.ReadDocumentAsync(
+            //        docUri
+            //        , new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
+            //        )
+            //    );
 
-            return (dynamic)response.Resource;
+            return await context.Client.ReadDocumentAsync<T>(
+                    docUri,
+                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
+                )
+                .ContinueWith(tsk => context.ProcessDocumentResponse(
+                    String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue)
+                    , tsk)
+                 );
+
+            
+        }
+
+        public static async Task<ResourceResponse<Document>> ReadDocument(ICollectionContext context, String documentId
+            , object partitionKeyValue = null
+            )
+        {
+            Uri docUri = context.DocumentUri(documentId);
+
+            return await context.Client.ReadDocumentAsync(
+                    docUri,
+                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
+                )
+                .ContinueWith(tsk => context.ProcessResourceResponse(
+                    String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue)
+                    , tsk)
+                 );
+
+
         }
 
         private static string EqualityPredicate(this NameValueCollection attributes, string tableAlias = "c")

@@ -1,6 +1,7 @@
-﻿using Microsoft.Azure.Documents.Client;
+﻿using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
 using System;
-
+using System.Threading.Tasks;
 
 namespace WorkBench.DataAccess
 {
@@ -10,7 +11,13 @@ namespace WorkBench.DataAccess
         Uri CollectionUri { get; }
         Uri DocumentUri(string documentId);
 
-        T ProcessResourceResponse<T>(string requestInfo, T response) where T : IResourceResponseBase;
+        ResourceResponse<Document> ProcessResourceResponse(string requestInfo, Task<ResourceResponse<Document>> response);
+        //T ProcessResourceResponse<T>(string requestInfo, Task<T> response) where T : IResourceResponse<Document>;
+        //IResourceResponseBase ProcessResourceResponse(string requestInfo, Task<IResourceResponseBase> response);
         T ProcessFeedResponse<T, K>(T response) where T : IFeedResponse<K>;
+
+        DocumentResponse<T> ProcessDocumentResponse<T>(string requestInfo, Task<DocumentResponse<T>> response);
+
+        //Task<TNewResult> Execute<TNewResult>(Func<Task<TNewResult>, TNewResult> function);
     }
 }

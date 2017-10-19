@@ -56,11 +56,28 @@ namespace WorkBench.DataAccess
         }
 
 
-
-        public T ProcessResourceResponse<T>(string requestInfo, T response) where T : IResourceResponseBase
+        public async Task<ResourceResponse<Document>> Execute<TNewResult>(Func<Task<ResourceResponse<Document>>> function, string requestInfo)
         {
-            Debug.WriteLine(String.Format("Request: {0}\nRequestCharge: {1}", requestInfo, response.RequestCharge));
-            return response;
+            var t = function();
+            var context = this;
+            return await t
+                .ContinueWith(tsk => context.ProcessResourceResponse(
+                    requestInfo
+                    , tsk)
+                 );
+        }
+        public ResourceResponse<Document> ProcessResourceResponse(string requestInfo, Task<ResourceResponse<Document>> response)
+        {
+            var r = response.Result;
+            Debug.WriteLine(String.Format("Request: {0}\nRequestCharge: {1}", requestInfo, r.RequestCharge));
+            return r;
+        }
+
+        public DocumentResponse<T> ProcessDocumentResponse<T>(string requestInfo, Task<DocumentResponse<T>> response)
+        {
+            var r = response.Result;
+            Debug.WriteLine(String.Format("Request: {0}\nRequestCharge: {1}", requestInfo, r.RequestCharge));
+            return r;
         }
 
 

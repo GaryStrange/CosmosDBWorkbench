@@ -11,6 +11,8 @@ namespace WorkBench.Security
 {
     public static class CosmosDBSecurityHelper
     {
+
+
         public static async Task<User> CreateUserIfNotExistAsync(DocumentCollectionContext context, string userId)
         {
             return await CreateUserIfNotExistAsync(context.Client, context.Config.databaseName, userId);
@@ -24,10 +26,7 @@ namespace WorkBench.Security
         /// <returns></returns>
         public static async Task<User> CreateUserIfNotExistAsync(DocumentClient client, string databaseName, string userId)
         {
-            User docUser = new User
-            {
-                Id = userId
-            };
+            User docUser = null;
 
             try
             {
@@ -37,13 +36,19 @@ namespace WorkBench.Security
             {
                 if (e.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    docUser = await client.CreateUserAsync(UriFactory.CreateDatabaseUri(databaseName), docUser);
+                    docUser = await client.CreateUserAsync(UriFactory.CreateDatabaseUri(databaseName), CreateUser(userId));
                 }
             }
 
             return docUser;
 
         }
+
+        private static User CreateUser(string userId)
+        => new User
+        {
+            Id = userId
+        };
 
         public static async Task<ResourceResponse<Permission>> GrantUserPermissionAsync(
             DocumentCollectionContext context,
@@ -86,25 +91,22 @@ namespace WorkBench.Security
             return permission;
         }
 
-        public static List<Permission> GetUserPermissions(DocumentClient client, User user)
-        => client.CreatePermissionQuery(user.PermissionsLink).ToList();
-           
-
-        private static String ConvertToString(this Enum eff)
-            => Enum.GetName(eff.GetType(), eff);
-
         private static Permission CreatePermission(string databaseName, Resource resource, string permissionId, PermissionMode mode = PermissionMode.Read)
         => new Permission
-            {
-                PermissionMode = mode,
-                ResourceLink = resource.SelfLink,
-                Id = permissionId
+        {
+            PermissionMode = mode,
+            ResourceLink = resource.SelfLink,
+            Id = permissionId
         };
 
-
+        private static String ConvertToString(this Enum eff)
+        => Enum.GetName(eff.GetType(), eff);
 
         private static string CreatePermissionId(string databaseName, string userId, string resourceId, string permissionMode) 
-            => string.Format("Database-{3}-User-{0}-Resource-{1}-PermissionMode-{2}", userId, resourceId, permissionMode, databaseName);
+        => string.Format("Database-{3}-User-{0}-Resource-{1}-PermissionMode-{2}", userId, resourceId, permissionMode, databaseName);
+
+        public static List<Permission> GetUserPermissions(DocumentClient client, User user)
+            => client.CreatePermissionQuery(user.PermissionsLink).ToList();
 
     }
 }
