@@ -1,10 +1,8 @@
-﻿using Microsoft.Azure.Documents;
+﻿using WorkBench.DataAccess.SchemaAttributes;
+using Microsoft.Azure.Documents;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WorkBench.DataAccess.SchemaAttributes;
+
 
 namespace WorkBench.DataAccess
 {

@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using WorkBench.DataAccess.SchemaAttributes;
 
 namespace WorkBench.Schema
 {
@@ -11,9 +12,33 @@ namespace WorkBench.Schema
         [JsonProperty(PropertyName = "userid")]
         public string userid;
 
+        private string _email;
+        public string email
+        {
+            get { return _email; }
+            set { _email = value; emailHash = HashProperty.sha256(value); }
+        }
+
+        [JsonProperty(PropertyName = "emailHash")]
+        private string emailHash { get; set; }
+
         public object PartitionKeyValue => this.userid;
     }
 
+    internal static class HashProperty
+    {
+        public static string sha256(string propertyValue)
+        {
+            using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+            {
+                // Send a sample text to hash.  
+                var hashedBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(propertyValue));
+                // Get the hashed string.  
+                return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+            }
+        }
+
+    }
     public sealed class PricePoint : Document
     {
 
