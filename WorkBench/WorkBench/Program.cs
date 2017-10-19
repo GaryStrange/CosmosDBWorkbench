@@ -45,6 +45,7 @@ namespace WorkBench
             CustomerProfile customerProfile = new CustomerProfile()
             {
                 userid = "gary.strange2"
+                ,email = "gary.strange@asos.com"
             };
 
             customerProfile = CosmosDbHelper.CreateDocument(masterKeyContext, customerProfile);
