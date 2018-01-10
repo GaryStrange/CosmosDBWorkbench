@@ -29,6 +29,12 @@ namespace WorkBench.DataAccess
             _collection = CreateContextIfNotExists();
         }
 
+        public DocumentCollectionContext RefreshClient()
+        {
+            this._client = CosmosDBFactory.CreateClient(this._config);
+            return this;
+        }
+
         private DocumentCollection CreateContextIfNotExists()
         {
             //CosmosDbHelper.CreateDatabaseIfNotExists(this.Client, this.Config.databaseName)

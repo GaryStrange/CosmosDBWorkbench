@@ -1,4 +1,5 @@
 ﻿using Microsoft.Azure.Documents;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +20,7 @@ namespace WorkBench.Schema
 
         public string Description { get; set; }
 
-        [DataSensitivity(IsConfidential = true)]
+        [SensitivityProperty(SensitivityClass = SensitivityClasses.Confidential)]
         public string DiscountCode { get; set; }
 
         public SpendRestriction SpendRestriction { get; set; }
@@ -82,6 +83,8 @@ namespace WorkBench.Schema
         DeliveryAmountOff = 3
     }
 
+    
+
     public class Promotion : Document
     {
         public Promotion()
@@ -93,6 +96,10 @@ namespace WorkBench.Schema
             DeliveryCountryRestriction = new DeliveryCountryRestriction();
         }
 
+        public static Promotion NewPromotion()
+        {
+            return new Promotion();
+        }
 
         public string Name { get; set; }
 
@@ -110,6 +117,7 @@ namespace WorkBench.Schema
 
         public bool IsActive { get; set; }
 
+        [JsonProperty]
         public int CampaignCategoryId { get; set; }
 
         public PromotionType PromotionType { get; set; }

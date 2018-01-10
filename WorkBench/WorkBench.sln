@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.14
+VisualStudioVersion = 15.0.27004.2005
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkBench", "WorkBench\WorkBench.csproj", "{7776991B-C2D1-41C3-B3C2-DB980E228295}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkBench", "WorkBench\WorkBench.csproj", "{7776991B-C2D1-41C3-B3C2-DB980E228295}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CosmosDBClient", "CosmosDBClient\CosmosDBClient.csproj", "{19F4DBF2-5270-4E4D-92C3-67F349F368BD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,8 +17,15 @@ Global
 		{7776991B-C2D1-41C3-B3C2-DB980E228295}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7776991B-C2D1-41C3-B3C2-DB980E228295}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7776991B-C2D1-41C3-B3C2-DB980E228295}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19F4DBF2-5270-4E4D-92C3-67F349F368BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19F4DBF2-5270-4E4D-92C3-67F349F368BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19F4DBF2-5270-4E4D-92C3-67F349F368BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19F4DBF2-5270-4E4D-92C3-67F349F368BD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F691240E-60F4-4ECC-8123-8445F4837D5A}
 	EndGlobalSection
 EndGlobal

@@ -87,7 +87,7 @@ namespace WorkBench.DataAccess
                 var result = client.CreateDocumentCollectionAsync(
                     UriFactory.CreateDatabaseUri(databaseName),
                     collectionInfo,
-                    new RequestOptions { OfferThroughput = collectionConfig.offerThroughput }).Result;
+                    new RequestOptions { OfferThroughput = collectionConfig.offerThroughput, ConsistencyLevel = ConsistencyLevel.Eventual }).Result;
 
                 collectionInfo = result.Resource;
             }
@@ -223,7 +223,7 @@ namespace WorkBench.DataAccess
             
         }
 
-        public static async Task<ResourceResponse<Document>> ReadDocument(ICollectionContext context, String documentId
+        public static async Task<ResourceResponse<Document>> ReadDocumentAsync(ICollectionContext context, String documentId
             , object partitionKeyValue = null
             )
         {
@@ -231,7 +231,7 @@ namespace WorkBench.DataAccess
 
             return await context.Client.ReadDocumentAsync(
                     docUri,
-                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
+                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue), ConsistencyLevel = ConsistencyLevel.Eventual }
                 )
                 .ContinueWith(tsk => context.ProcessResourceResponse(
                     String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue)
@@ -299,6 +299,16 @@ namespace WorkBench.DataAccess
             return (dynamic)response.Resource;
         }
 
+        public static async Task<T> CreateDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource
+        {
+            var response = await context.Client.CreateDocumentAsync(context.CollectionUri, doc,
+                new RequestOptions()
+                {
+                    ConsistencyLevel = ConsistencyLevel.Eventual
+                });
+            return (dynamic)response.Resource;
+        }
+
         public static void ReplaceDocument<T>(ICollectionContext context, T doc) where T : Resource
         {
             var response = context.Client.ReplaceDocumentAsync(context.DocumentUri(doc.Id), doc).Result;
@@ -309,6 +319,21 @@ namespace WorkBench.DataAccess
         {
             var response = context.Client.UpsertDocumentAsync(context.CollectionUri, doc).Result;
             Debug.WriteLine(String.Format("Upsert response request charge: {0}", response.RequestCharge));
+        }
+
+        public static async Task<T> UpsertDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource
+        {
+            ResourceResponse<Document> response = await context.Client.UpsertDocumentAsync(context.CollectionUri, doc,
+                new RequestOptions()
+                {
+                    ConsistencyLevel = ConsistencyLevel.Eventual
+                })
+                                .ContinueWith(tsk => context.ProcessResourceResponse(
+                    String.Format("Upsert Document id ({0}), partition ({1})", doc.Id, doc.Id)
+                    , tsk)
+                 );
+
+            return (dynamic)response.Resource;
         }
 
         public static void DeleteDocument<T>(ICollectionContext context, T doc, object partitionKeyValue) where T : Resource
