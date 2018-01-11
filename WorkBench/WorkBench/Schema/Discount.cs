@@ -19,7 +19,6 @@ namespace WorkBench.Schema
 
         public string Description { get; set; }
 
-        [DataSensitivity(IsConfidential = true)]
         public string DiscountCode { get; set; }
 
         public SpendRestriction SpendRestriction { get; set; }

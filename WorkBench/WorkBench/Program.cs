@@ -6,6 +6,7 @@ using System.IO;
 using WorkBench.DataAccess;
 using WorkBench.Schema;
 using WorkBench.Security;
+using System.Linq;
 
 namespace WorkBench
 {
@@ -23,7 +24,7 @@ namespace WorkBench
 
             Configuration = builder.Build();
 
-            Action<string> print = (string s) => { Console.WriteLine("{0} = {1}", s,  Configuration[s]); };
+            Action<string> print = (string s) => { Console.WriteLine("{0} = {1}", s, Configuration[s]); };
             print("EndPointUrl");
             print("DatabaseName");
             print("CollectionName");
@@ -41,11 +42,50 @@ namespace WorkBench
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     config
                 );
+            //SecurityTest(masterKeyContext);
 
+            WishList list = CreateWishList();
+
+            list = CosmosDbHelper.CreateDocument(masterKeyContext, list);
+
+            Console.WriteLine("Wish Size = {0}", list.Wishes[0].Size);
+            Console.WriteLine("_ts = {0}", list.TTL);
+
+            list.Wishes[0].Size = "Medium";
+            list = CosmosDbHelper.UpsertDocument(masterKeyContext, list);
+
+            Console.WriteLine("Wish Size = {0}", list.Wishes[0].Size);
+            Console.WriteLine("_ts after document update = {0}", list.TTL);
+
+            var predicates = new System.Collections.Specialized.NameValueCollection() { { "_ts", list.TTL.ToString() } };
+            var response = CosmosDbHelper.RequestDocumentByEquality<WishList>(masterKeyContext, null, predicates);
+            var list2 = response.AsEnumerable();
+            Console.WriteLine("Press any key.");
+            Console.ReadKey();
+        }
+
+        private static WishList CreateWishList()
+        {
+            return new WishList()
+            {
+                CustomerId = Guid.NewGuid().ToString(),
+                Wishes = new Wish[1]
+                {
+                    new Wish() { Name = "Wish upon a star", Size = "Big" }
+                }
+
+            };
+        }
+
+        private static void SecurityTest(DocumentCollectionContext masterKeyContext)
+        {
             CustomerProfile customerProfile = new CustomerProfile()
             {
                 userid = "gary.strange2"
-                ,email = "gary.strange@asos.com"
+                            ,
+                emailHash = "gary.strange@asos.com"
+                            ,
+                email = "gary.strange@asos.com"
             };
 
             customerProfile = CosmosDbHelper.CreateDocument(masterKeyContext, customerProfile);
@@ -67,7 +107,7 @@ namespace WorkBench
 
             }
 
-            
+
 
 
             Debug.WriteLine(string.Format("Token: {0}", p.Token));
@@ -93,7 +133,11 @@ namespace WorkBench
             var customerProfileMaster = CosmosDbHelper.ReadDocument<CustomerProfile>(masterKeyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
             customerProfileMaster.Wait();
 
-            var responseTask = CosmosDbHelper.ReadDocument(masterKeyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
+            customerProfile = customerProfileMaster.Result;
+            customerProfile.userid = "gary.strange3";
+            customerProfile = CosmosDbHelper.UpsertDocument(masterKeyContext, customerProfile);
+
+            var responseTask = CosmosDbHelper.ReadDocument(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
             responseTask.Wait();
 
             //customerProfileRead = (CustomerProfile)responseTask.Result;
@@ -105,11 +149,6 @@ namespace WorkBench
 
             // Fails with expected 403 status code
             customerProfile = CosmosDbHelper.CreateDocument(readOnlyContext, customerProfile);
-
-            Console.ReadKey();
         }
-
-
-
     }
 }

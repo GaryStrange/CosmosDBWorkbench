@@ -245,15 +245,19 @@ namespace WorkBench.DataAccess
         {
             return string.Join("AND",
             Enumerable.Range(0, attributes.Count)
-                .Select(i => attributes.GetKey(i) + " = " + attributes.GetValues(i).FirstOrDefault())
+                .Select(i => tableAlias + "." + attributes.GetKey(i) + " = " + attributes.GetValues(i).FirstOrDefault())
                 );
         }
 
-        public static FeedResponse<T> RequestDocumentByAttribute<T>(ICollectionContext context, object PartitionKeyValue, NameValueCollection equalityAttributes) where T : Resource, IPartitionedDocument
+        public static FeedResponse<T> RequestDocumentByEquality<T>(ICollectionContext context, object PartitionKeyValue, NameValueCollection equalityAttributes) where T : Resource, IPartitionedDocument
         {
             var request = context.Client.CreateDocumentQuery<T>(context.CollectionUri
-                , String.Format("SELECT * FROM c WHERE c.id = \"{0}\"", 1)
-                , new FeedOptions() { PartitionKey = new PartitionKey(PartitionKeyValue) }
+                , String.Format("SELECT * FROM c WHERE {0}", EqualityPredicate(equalityAttributes))
+                , new FeedOptions()
+                {
+                    PartitionKey = PartitionKeyValue is null ? null : new PartitionKey(PartitionKeyValue),
+                    PopulateQueryMetrics = true
+                }
                 )
                 .AsDocumentQuery();
 
@@ -305,10 +309,11 @@ namespace WorkBench.DataAccess
             Debug.WriteLine(String.Format("Replace response request charge: {0}", response.RequestCharge));
         }
 
-        public static void UpsertDocument<T>(ICollectionContext context, T doc) where T : Resource
+        public static T UpsertDocument<T>(ICollectionContext context, T doc) where T : Resource
         {
             var response = context.Client.UpsertDocumentAsync(context.CollectionUri, doc).Result;
             Debug.WriteLine(String.Format("Upsert response request charge: {0}", response.RequestCharge));
+            return (dynamic)response.Resource;
         }
 
         public static void DeleteDocument<T>(ICollectionContext context, T doc, object partitionKeyValue) where T : Resource

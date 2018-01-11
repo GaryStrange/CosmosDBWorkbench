@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace WorkBench.DataAccess.SchemaAttributes
@@ -39,6 +40,8 @@ namespace WorkBench.DataAccess.SchemaAttributes
         }
 
     }
+
+
 
     public enum SensitivityClasses
     {
