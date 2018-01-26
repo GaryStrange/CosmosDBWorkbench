@@ -89,7 +89,7 @@ namespace WorkBench.DataAccess
                     collectionInfo,
                     new RequestOptions {
                         OfferThroughput = collectionConfig.offerThroughput
-                        , ConsistencyLevel = collectionConfig.DefaultConsistencyLevel
+                        , ConsistencyLevel = ConsistencyLevel.Strong
                     }).Result;
 
                 collectionInfo = result.Resource;

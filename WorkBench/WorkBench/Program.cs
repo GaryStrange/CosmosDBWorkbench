@@ -32,6 +32,7 @@ namespace WorkBench
             print("CollectionName");
             print("PartitionKeyPath");
             print("ConsistencyLevel");
+            print("OfferThroughput");
 
             var config = CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
                 Configuration["EndPointUrl"],
@@ -43,7 +44,7 @@ namespace WorkBench
                 );
 
             var program = new Program();
-            //program.EventualConsistencyTest(config);
+            program.EventualConsistencyTest(config);
             Console.WriteLine("Press any key.");
             Console.ReadKey();
             return;
@@ -93,8 +94,8 @@ namespace WorkBench
                     config
                 );
 
-            var predicates = new System.Collections.Specialized.NameValueCollection() { { "customerId", 135931325 } };
-            CosmosDbHelper.RequestDocumentByEquality<ReturnBookingCommand>(primaryContext, 135931325, predicates);
+            //var predicates = new System.Collections.Specialized.NameValueCollection() { { "customerId", 135931325 } };
+            //CosmosDbHelper.RequestDocumentByEquality<ReturnBookingCommand>(primaryContext, 135931325, predicates);
         }
 
         private static void SecurityTest(DocumentCollectionContext masterKeyContext)
@@ -298,9 +299,22 @@ namespace WorkBench
             {
                 //context.RefreshClient();
                 //Console.WriteLine("Read");
-                var chance1 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+
+                var tsk1 = CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                tsk1.Wait();
+
+                var chance1 = tsk1.Result;
+
                 var chance2 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
-                var chance3 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                var chance3 = chance2;
+                //var chance3 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+
+                //var chance1 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                //var chance2 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                //var chance3 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+
+
+
                 //await Task.Delay(TimeSpan.FromMilliseconds(5));
                 var newP = (ScoreCard)chance1;
                 //Console.Write(newP.Timestamp.ToString("MM/dd/yyyy hh:mm:ss.fff tt") + ",");

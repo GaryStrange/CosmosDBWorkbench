@@ -40,8 +40,8 @@ namespace WorkBench.Schema
 
         public override string ToString()
         {
-            var s = JsonConvert.SerializeObject(this);
-            return base.ToString() + s;
+            var s = JsonConvert.SerializeObject(this, Formatting.Indented);
+            return s;
         }
 
         public static ScoreCard NewScoreCard()

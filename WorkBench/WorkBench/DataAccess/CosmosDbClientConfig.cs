@@ -39,7 +39,8 @@ namespace WorkBench.DataAccess
                 string databaseName,
                 string collectionName,
                 string partitionKeyPath,
-                string consistencyLevel = null
+                string consistencyLevel = null,
+                int? offerThroughput = null
             )
         {
             return new CosmosDbClientConfig()
@@ -51,8 +52,10 @@ namespace WorkBench.DataAccess
                 {
                     collectionName = collectionName,
                     PartitionKeyPath = partitionKeyPath,
-                    DefaultConsistency = consistencyLevel
+                    DefaultConsistency = consistencyLevel,
+                    offerThroughput = offerThroughput ?? DocumentCollectionConfig.MinimumOfferThroughput
                 }
+                .Validate()
             }.Validate();
         }
 
@@ -65,8 +68,7 @@ namespace WorkBench.DataAccess
                 collectionName: appSettings["CollectionName"],
                 partitionKeyPath: appSettings["PartitionKeyPath"],
                 consistencyLevel: appSettings["ConsistencyLevel"]
-                )
-                .Validate();
+                );
         }
 
         public CosmosDbClientConfig Validate()
