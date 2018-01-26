@@ -16,6 +16,7 @@ namespace WorkBench
         public static IConfigurationRoot Configuration { get; set; }
 
         private bool ContinousRead = true;
+        private bool MakeWrites = true;
 
         static void Main(string[] args)
         {
@@ -30,17 +31,19 @@ namespace WorkBench
             print("DatabaseName");
             print("CollectionName");
             print("PartitionKeyPath");
+            print("ConsistencyLevel");
 
             var config = CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
                 Configuration["EndPointUrl"],
                 Configuration["AuthorizationKey"],
                 Configuration["DatabaseName"],
                 Configuration["CollectionName"],
-                Configuration["PartitionKeyPath"]
+                Configuration["PartitionKeyPath"],
+                Configuration["ConsistencyLevel"]
                 );
 
             var program = new Program();
-            program.EventualConsistencyTest(config);
+            //program.EventualConsistencyTest(config);
             Console.WriteLine("Press any key.");
             Console.ReadKey();
             return;
@@ -81,6 +84,17 @@ namespace WorkBench
                 }
 
             };
+        }
+
+        private static void QueryOrderReturnsTest(CosmosDbClientConfig config)
+        {
+            var primaryContext =
+                DocumentCollectionContextFactory.CreateCollectionContext(
+                    config
+                );
+
+            var predicates = new System.Collections.Specialized.NameValueCollection() { { "customerId", 135931325 } };
+            CosmosDbHelper.RequestDocumentByEquality<ReturnBookingCommand>(primaryContext, 135931325, predicates);
         }
 
         private static void SecurityTest(DocumentCollectionContext masterKeyContext)
@@ -126,6 +140,7 @@ namespace WorkBench
                 Configuration["DatabaseName"],
                 Configuration["CollectionName"],
                 Configuration["PartitionKeyPath"]
+                
                 );
 
             var readOnlyContext =
@@ -142,13 +157,13 @@ namespace WorkBench
             customerProfile.userid = "gary.strange3";
             customerProfile = CosmosDbHelper.UpsertDocument(masterKeyContext, customerProfile);
 
-            var responseTask = CosmosDbHelper.ReadDocument(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
+            var responseTask = CosmosDbHelper.ReadDocument<CustomerProfile>(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
             responseTask.Wait();
 
             //customerProfileRead = (CustomerProfile)responseTask.Result;
 
 
-            customerProfileRead = customerProfileMaster.Result;
+            var customerProfileRead = customerProfileMaster.Result;
 
             //var customerProfileRead = CosmosDbHelper.ReadDocument<CustomerProfile>(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
 
@@ -159,7 +174,7 @@ namespace WorkBench
         }
 
         public void EventualConsistencyTest(CosmosDbClientConfig config)
-        {
+        { 
             var primaryContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     config
@@ -174,50 +189,48 @@ namespace WorkBench
             var readTasks = new List<Task>();
             var p = ScoreCard.NewScoreCard();
             Console.WriteLine(p);
-            var g = Guid.NewGuid();
+                var g = Guid.NewGuid();
             Console.WriteLine(g);
-            p.Id = g.ToString();
+                p.Id = g.ToString();
 
-            int loops = 1000;
+                int loops = 20;
             p = CosmosDbHelper.CreateDocument(primaryContext, p);
-            Console.WriteLine(p.ToString());
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
+                Console.WriteLine(p.ToString());
+                readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
 
-            //writeTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
 
-            //Console.WriteLine("Start writing {0}", DateTime.UtcNow);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops, 
+            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
                 (card, score) => card.Player1 = score )
             );
             writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player2 = score)
-);
+                (card, score) => card.Player2 = score)
+            );
             writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player3 = score)
-);
+                (card, score) => card.Player3 = score)
+            );
             writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player4 = score)
-);
+                (card, score) => card.Player4 = score)
+            );
             writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player5 = score)
-);
+                (card, score) => card.Player5 = score)
+            );
             writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player6 = score)
-);
+                (card, score) => card.Player6 = score)
+            );
             writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player7 = score)
-);
+                (card, score) => card.Player7 = score)
+            );
             writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player8 = score)
-);
+                (card, score) => card.Player8 = score)
+            );
             //Console.WriteLine("Stop writing {0}", DateTime.UtcNow);
 
             //var readTasks = new List<Task>();
@@ -247,16 +260,17 @@ namespace WorkBench
 
         private async Task WriteDocumentsAsync(DocumentCollectionContext primaryContext, ScoreCard p, int loops, Action<ScoreCard, int> updateScore)
         {
-            for (int i = 0; i < loops; i++)
+            for (int i = 0; i < loops && this.MakeWrites; i++)
             {
                 //Console.WriteLine("Upsert");
                 updateScore(p, i);
                 var x = await CosmosDbHelper.UpsertDocumentAsync(primaryContext, p);
 
             }
+
         }
 
-        private async Task ReadDocumentsAsync(DocumentCollectionContext context, Guid g, int loops)
+        private async Task ReadDocumentsAsync(DocumentCollectionContext context, Guid g, int loops = 4000)
         {
             //Console.WriteLine("Start reading {0}", DateTime.UtcNow);
             var prevP = ScoreCard.NewScoreCard();
@@ -273,6 +287,7 @@ namespace WorkBench
                     t2.Player7 < t1.Player7 ||
                     t2.Player8 < t1.Player8)
                 {
+                    //this.MakeWrites = false; //stop the write process.
                     throw new Exception(
                         String.Format("Inconsistent data read! \n T2: {0}\n T1: {1}", t2,t1)
                         );

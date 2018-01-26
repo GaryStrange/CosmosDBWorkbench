@@ -53,7 +53,7 @@ namespace WorkBench.DataAccess
             }
         }
 
-        public static async Task DeleteCollectionIfExists(DocumentCollectionContext context)
+        public static async Task DeleteCollectionIfExistsAsync(DocumentCollectionContext context)
         {
             try
             {
@@ -87,7 +87,10 @@ namespace WorkBench.DataAccess
                 var result = client.CreateDocumentCollectionAsync(
                     UriFactory.CreateDatabaseUri(databaseName),
                     collectionInfo,
-                    new RequestOptions { OfferThroughput = collectionConfig.offerThroughput, ConsistencyLevel = ConsistencyLevel.Eventual }).Result;
+                    new RequestOptions {
+                        OfferThroughput = collectionConfig.offerThroughput
+                        , ConsistencyLevel = collectionConfig.DefaultConsistencyLevel
+                    }).Result;
 
                 collectionInfo = result.Resource;
             }
@@ -213,7 +216,7 @@ namespace WorkBench.DataAccess
 
             return await context.Client.ReadDocumentAsync<T>(
                     docUri,
-                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
+                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }//, ConsistencyLevel = ConsistencyLevel.Eventual }
                 )
                 .ContinueWith(tsk => context.ProcessDocumentResponse(
                     String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue)
@@ -231,7 +234,7 @@ namespace WorkBench.DataAccess
 
             return await context.Client.ReadDocumentAsync(
                     docUri,
-                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue), ConsistencyLevel = ConsistencyLevel.Eventual }
+                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
                 )
                 .ContinueWith(tsk => context.ProcessResourceResponse(
                     String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue)
@@ -326,12 +329,13 @@ namespace WorkBench.DataAccess
             return (dynamic)response.Resource;
         }
 
-        public static async Task<T> UpsertDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource
+        public static async Task<T> UpsertDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource, IPartitionedDocument
         {
             ResourceResponse<Document> response = await context.Client.UpsertDocumentAsync(context.CollectionUri, doc,
                 new RequestOptions()
                 {
-                    ConsistencyLevel = ConsistencyLevel.Eventual
+                    //PartitionKey = new PartitionKey(doc.PartitionKeyValue)
+                    //ConsistencyLevel = ConsistencyLevel.Eventual
                 })
                                 .ContinueWith(tsk => context.ProcessResourceResponse(
                     String.Format("Upsert Document id ({0}), partition ({1})", doc.Id, doc.Id)

@@ -38,7 +38,8 @@ namespace WorkBench.DataAccess
                 string authKey,
                 string databaseName,
                 string collectionName,
-                string partitionKeyPath
+                string partitionKeyPath,
+                string consistencyLevel = null
             )
         {
             return new CosmosDbClientConfig()
@@ -49,7 +50,8 @@ namespace WorkBench.DataAccess
                 collectionConfig = new DocumentCollectionConfig()
                 {
                     collectionName = collectionName,
-                    PartitionKeyPath = partitionKeyPath
+                    PartitionKeyPath = partitionKeyPath,
+                    DefaultConsistency = consistencyLevel
                 }
             }.Validate();
         }
@@ -61,7 +63,8 @@ namespace WorkBench.DataAccess
                 authKey: appSettings["AuthorizationKey"],
                 databaseName: appSettings["DatabaseName"],
                 collectionName: appSettings["CollectionName"],
-                partitionKeyPath: appSettings["PartitionKeyPath"]
+                partitionKeyPath: appSettings["PartitionKeyPath"],
+                consistencyLevel: appSettings["ConsistencyLevel"]
                 )
                 .Validate();
         }

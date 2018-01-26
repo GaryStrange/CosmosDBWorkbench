@@ -13,5 +13,18 @@ namespace WorkBench.DataAccess
         public int offerThroughput = 10000;
         public IndexingPolicy indexingPolicy;
         public string PartitionKeyPath;
+        public string DefaultConsistency;
+        public ConsistencyLevel DefaultConsistencyLevel
+        {
+            get
+            {
+                switch (DefaultConsistency)
+                {
+                    case "ConsistentPrefix": return ConsistencyLevel.ConsistentPrefix;
+                    case "Eventual": return ConsistencyLevel.Eventual;
+                    default: return ConsistencyLevel.Session;
+                }
+            }
+        }
     }
 }

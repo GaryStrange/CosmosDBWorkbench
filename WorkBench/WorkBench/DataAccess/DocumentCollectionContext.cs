@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace WorkBench.DataAccess
 {
-    public struct DocumentCollectionContext : ICollectionContext
+    public class DocumentCollectionContext : ICollectionContext
     {
         private DocumentClient _client;
         private CosmosDbClientConfig _config;
@@ -27,6 +27,7 @@ namespace WorkBench.DataAccess
             _config = config;
             _collection = null;
             _collection = CreateContextIfNotExists();
+
         }
 
         public DocumentCollectionContext RefreshClient()
@@ -91,6 +92,12 @@ namespace WorkBench.DataAccess
         {
             throw new NotImplementedException();
         }
+
+        ~DocumentCollectionContext()
+        {
+            CosmosDbHelper.DeleteCollectionIfExistsAsync(this).Wait();
+        }
+
     }
 
 }
