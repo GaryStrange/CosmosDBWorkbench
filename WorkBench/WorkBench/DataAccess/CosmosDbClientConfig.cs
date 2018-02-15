@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Documents.Client;
+﻿using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
 using System;
 
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ namespace WorkBench.DataAccess
         public string authKey;
         public string databaseName;
         public DocumentCollectionConfig collectionConfig;
+        public string consistencyLevel;
 
         public string collectionName { get { return this.collectionConfig.collectionName; } }
         public string PartionKeyField { get { return this.collectionConfig.PartitionKeyPath; } }
@@ -27,10 +29,26 @@ namespace WorkBench.DataAccess
                 RequestTimeout = TimeSpan.FromMinutes(2),
                 RetryOptions = new RetryOptions
                 {
-                    MaxRetryAttemptsOnThrottledRequests = 5,
-                    MaxRetryWaitTimeInSeconds = 2
+                    MaxRetryAttemptsOnThrottledRequests = 9,
+                    MaxRetryWaitTimeInSeconds = 5
                 }
             };
+        }
+
+        public ConsistencyLevel DefaultConsistencyLevel
+        {
+            get
+            {
+                switch (consistencyLevel)
+                {
+                    case "Strong": return ConsistencyLevel.Strong;
+                    case "BoundedStaleness": return ConsistencyLevel.BoundedStaleness;
+                    case "ConsistentPrefix": return ConsistencyLevel.ConsistentPrefix;
+                    case "Eventual": return ConsistencyLevel.Eventual;
+                    case "Session":
+                    default: return ConsistencyLevel.Session;
+                }
+            }
         }
 
         public static CosmosDbClientConfig CreateDocDbConfigFromAppConfig(
@@ -48,11 +66,11 @@ namespace WorkBench.DataAccess
                 endPointUrl = endPointUrl,
                 authKey = authKey,
                 databaseName = databaseName,
+                consistencyLevel = consistencyLevel,
                 collectionConfig = new DocumentCollectionConfig()
                 {
                     collectionName = collectionName,
                     PartitionKeyPath = partitionKeyPath,
-                    DefaultConsistency = consistencyLevel,
                     offerThroughput = offerThroughput ?? DocumentCollectionConfig.MinimumOfferThroughput
                 }
                 .Validate()
@@ -61,7 +79,7 @@ namespace WorkBench.DataAccess
 
         public static CosmosDbClientConfig CreateDocDbConfigFromAppConfig(NameValueCollection appSettings)
         {
-            return CreateDocDbConfigFromAppConfig(
+            return CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
                 endPointUrl: appSettings["EndPointUrl"],
                 authKey: appSettings["AuthorizationKey"],
                 databaseName: appSettings["DatabaseName"],
@@ -78,6 +96,7 @@ namespace WorkBench.DataAccess
             if (this.databaseName == null) throw new NullReferenceException("databaseName null!");
             if (this.collectionName == null) throw new NullReferenceException("collectionName null!");
             if (this.PartionKeyField == null) throw new NullReferenceException("PartitionKeyField null!");
+            
             return this;
         }
     };

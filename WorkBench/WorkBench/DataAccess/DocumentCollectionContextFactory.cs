@@ -5,21 +5,24 @@ namespace WorkBench.DataAccess
 {
     public static class DocumentCollectionContextFactory
     {
-        public static DocumentCollectionContext CreateCollectionContext(NameValueCollection appSettings)
+        public static DocumentCollectionContext CreateCollectionContext(NameValueCollection appSettings, IResponseProcessor responseProcessor)
         {
             return CreateCollectionContext(
-                    CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(appSettings)
+                    CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(appSettings),
+                    responseProcessor: responseProcessor
                 );
         }
-        public static DocumentCollectionContext CreateCollectionContext(CosmosDbClientConfig config)
+        public static DocumentCollectionContext CreateCollectionContext(CosmosDbClientConfig config, IResponseProcessor responseProcessor)
         {
             DocumentCollectionContext context = new DocumentCollectionContext(
                 client: CosmosDBFactory.CreateClient(config),
-                config: config
+                config: config,
+                responseProcessor: responseProcessor
             );
 
             return context;
         }
+
 
 
     }

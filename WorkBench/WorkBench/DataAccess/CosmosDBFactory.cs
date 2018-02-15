@@ -17,7 +17,7 @@ namespace WorkBench.DataAccess
                 new Uri(config.endPointUrl),
                 config.authKey,
                 config.GetConnectionPolicy(),
-                ConsistencyLevel.Strong
+                config.DefaultConsistencyLevel
                 );
 
         }

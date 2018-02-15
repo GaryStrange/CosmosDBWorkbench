@@ -19,15 +19,15 @@ namespace WorkBench.DataAccess
         public DocumentClient Client { get { return _client; } }
         public CosmosDbClientConfig Config { get { return _config; } }
 
-        
+        public IResponseProcessor ResponseProcessor { get; private set; }
 
-        public DocumentCollectionContext(DocumentClient client, CosmosDbClientConfig config)
+        public DocumentCollectionContext(DocumentClient client, CosmosDbClientConfig config, IResponseProcessor responseProcessor)
         {
             _client = client;
             _config = config;
             _collection = null;
             _collection = CreateContextIfNotExists();
-
+            ResponseProcessor = responseProcessor;
         }
 
         public DocumentCollectionContext RefreshClient()
@@ -68,30 +68,22 @@ namespace WorkBench.DataAccess
             var t = function();
             var context = this;
             return await t
-                .ContinueWith(tsk => context.ProcessResourceResponse(
+                .ContinueWith(tsk => context.ResponseProcessor.ProcessResourceResponse(
                     requestInfo
                     , tsk)
                  );
         }
-        public ResourceResponse<Document> ProcessResourceResponse(string requestInfo, Task<ResourceResponse<Document>> response)
-        {
-            var r = response.Result;
-            Debug.WriteLine(String.Format("Request: {0}\nRequestCharge: {1}", requestInfo, r.RequestCharge));
-            return r;
-        }
-
-        public DocumentResponse<T> ProcessDocumentResponse<T>(string requestInfo, Task<DocumentResponse<T>> response)
-        {
-            var r = response.Result;
-            Debug.WriteLine(String.Format("Request: {0}\nRequestCharge: {1}", requestInfo, r.RequestCharge));
-            return r;
-        }
 
 
-        public T ProcessFeedResponse<T, K>(T response) where T : IFeedResponse<K>
-        {
-            throw new NotImplementedException();
-        }
+
+
+
+
+
+        //public T ProcessFeedResponse<T, K>(T response) where T : IFeedResponse<K>
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         ~DocumentCollectionContext()
         {
