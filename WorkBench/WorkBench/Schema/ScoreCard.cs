@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Azure.Documents;
 using Newtonsoft.Json;
+using WorkBench.DataAccess;
 
 namespace WorkBench.Schema
 {
     
-    public class ScoreCard : Document
+    public class ScoreCard : Document, IPartitionedDocument
     {
         [JsonProperty]
         public int Player1 { get; set; }
@@ -32,6 +33,8 @@ namespace WorkBench.Schema
 
         [JsonProperty]
         public int Player8 { get; set; }
+
+        public object PartitionKeyValue => base.Id;
 
         public override string ToString()
         {

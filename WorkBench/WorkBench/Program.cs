@@ -30,13 +30,15 @@ namespace WorkBench
             print("DatabaseName");
             print("CollectionName");
             print("PartitionKeyPath");
+            print("OfferThroughput");
 
             var config = CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
                 Configuration["EndPointUrl"],
                 Configuration["AuthorizationKey"],
                 Configuration["DatabaseName"],
                 Configuration["CollectionName"],
-                Configuration["PartitionKeyPath"]
+                Configuration["PartitionKeyPath"],
+                Int32.Parse( Configuration["OfferThroughput"] )
                 );
 
             var program = new Program();
@@ -142,13 +144,13 @@ namespace WorkBench
             customerProfile.userid = "gary.strange3";
             customerProfile = CosmosDbHelper.UpsertDocument(masterKeyContext, customerProfile);
 
-            var responseTask = CosmosDbHelper.ReadDocument(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
+            var responseTask = CosmosDbHelper.ReadDocument<CustomerProfile>(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
             responseTask.Wait();
 
             //customerProfileRead = (CustomerProfile)responseTask.Result;
 
 
-            customerProfileRead = customerProfileMaster.Result;
+            var customerProfileRead = customerProfileMaster.Result;
 
             //var customerProfileRead = CosmosDbHelper.ReadDocument<CustomerProfile>(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
 
@@ -178,7 +180,7 @@ namespace WorkBench
             Console.WriteLine(g);
             p.Id = g.ToString();
 
-            int loops = 1000;
+            int loops = 500;
             p = CosmosDbHelper.CreateDocument(primaryContext, p);
             Console.WriteLine(p.ToString());
             readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
