@@ -9,11 +9,8 @@ namespace WorkBench.DataAccess
 {
     public class DocumentCollectionConfig
     {
-        public static int defaultOfferThroughput = 1000;
         public string collectionName;
-
-        public int offerThroughput;
-
+        public int offerThroughput = 10000;
         public IndexingPolicy indexingPolicy;
         public string PartitionKeyPath;
     }

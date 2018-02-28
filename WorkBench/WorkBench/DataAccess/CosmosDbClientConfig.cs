@@ -38,8 +38,7 @@ namespace WorkBench.DataAccess
                 string authKey,
                 string databaseName,
                 string collectionName,
-                string partitionKeyPath,
-                int? offerThroughput = null
+                string partitionKeyPath
             )
         {
             return new CosmosDbClientConfig()
@@ -50,8 +49,7 @@ namespace WorkBench.DataAccess
                 collectionConfig = new DocumentCollectionConfig()
                 {
                     collectionName = collectionName,
-                    PartitionKeyPath = partitionKeyPath,
-                    offerThroughput = offerThroughput ?? DocumentCollectionConfig.defaultOfferThroughput
+                    PartitionKeyPath = partitionKeyPath
                 }
             }.Validate();
         }
@@ -63,8 +61,7 @@ namespace WorkBench.DataAccess
                 authKey: appSettings["AuthorizationKey"],
                 databaseName: appSettings["DatabaseName"],
                 collectionName: appSettings["CollectionName"],
-                partitionKeyPath: appSettings["PartitionKeyPath"],
-                offerThroughput: Int32.Parse( appSettings["OfferThroughput"] )
+                partitionKeyPath: appSettings["PartitionKeyPath"]
                 )
                 .Validate();
         }
