@@ -8,6 +8,7 @@ using WorkBench.DataAccess;
 using WorkBench.Schema;
 using WorkBench.Security;
 using System.Linq;
+using WorkBench.Logging;
 
 namespace WorkBench
 {
@@ -16,6 +17,7 @@ namespace WorkBench
         public static IConfigurationRoot Configuration { get; set; }
 
         private bool ContinousRead = true;
+        private bool MakeWrites = true;
 
         static void Main(string[] args)
         {
@@ -30,13 +32,16 @@ namespace WorkBench
             print("DatabaseName");
             print("CollectionName");
             print("PartitionKeyPath");
+            print("ConsistencyLevel");
+            print("OfferThroughput");
 
             var config = CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
                 Configuration["EndPointUrl"],
                 Configuration["AuthorizationKey"],
                 Configuration["DatabaseName"],
                 Configuration["CollectionName"],
-                Configuration["PartitionKeyPath"]
+                Configuration["PartitionKeyPath"],
+                Configuration["ConsistencyLevel"]
                 );
 
             var program = new Program();
@@ -47,6 +52,7 @@ namespace WorkBench
             var masterKeyContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     config
+                    , new ResponseProcessor( (s) => Debug.WriteLine(s) )
                 );
             //SecurityTest(masterKeyContext);
 
@@ -65,7 +71,7 @@ namespace WorkBench
 
             var predicates = new System.Collections.Specialized.NameValueCollection() { { "_ts", list.TTL.ToString() } };
             var response = CosmosDbHelper.RequestDocumentByEquality<WishList>(masterKeyContext, null, predicates);
-            var list2 = response.AsEnumerable();
+            //var list2 = response.AsEnumerable();
             Console.WriteLine("Press any key.");
             Console.ReadKey();
         }
@@ -81,6 +87,18 @@ namespace WorkBench
                 }
 
             };
+        }
+
+        private static void QueryOrderReturnsTest(CosmosDbClientConfig config)
+        {
+            var primaryContext =
+                DocumentCollectionContextFactory.CreateCollectionContext(
+                    config
+                    , new ResponseProcessor((s) => Debug.WriteLine(s))
+                );
+
+            //var predicates = new System.Collections.Specialized.NameValueCollection() { { "customerId", 135931325 } };
+            //CosmosDbHelper.RequestDocumentByEquality<ReturnBookingCommand>(primaryContext, 135931325, predicates);
         }
 
         private static void SecurityTest(DocumentCollectionContext masterKeyContext)
@@ -126,11 +144,13 @@ namespace WorkBench
                 Configuration["DatabaseName"],
                 Configuration["CollectionName"],
                 Configuration["PartitionKeyPath"]
+                
                 );
 
             var readOnlyContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     configToken
+                    , new ResponseProcessor( (s) => Debug.WriteLine(s) )
                 );
 
 
@@ -142,13 +162,13 @@ namespace WorkBench
             customerProfile.userid = "gary.strange3";
             customerProfile = CosmosDbHelper.UpsertDocument(masterKeyContext, customerProfile);
 
-            var responseTask = CosmosDbHelper.ReadDocument(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
+            var responseTask = CosmosDbHelper.ReadDocument<CustomerProfile>(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
             responseTask.Wait();
 
             //customerProfileRead = (CustomerProfile)responseTask.Result;
 
 
-            customerProfileRead = customerProfileMaster.Result;
+            var customerProfileRead = customerProfileMaster.Result;
 
             //var customerProfileRead = CosmosDbHelper.ReadDocument<CustomerProfile>(readOnlyContext, customerProfile.Id, customerProfile.PartitionKeyValue);
 
@@ -159,65 +179,113 @@ namespace WorkBench
         }
 
         public void EventualConsistencyTest(CosmosDbClientConfig config)
-        {
+        { 
             var primaryContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     config
+                    , new ResponseProcessor( (s) => Console.WriteLine(s) )
                 );
-
             var secondaryContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     config
+                    , new ResponseProcessor((s) => Console.WriteLine(s))
                 );
+            Console.WriteLine("Client consistency level = {0}", primaryContext.Client.ConsistencyLevel);
+
 
             var writeTasks = new List<Task>();
             var readTasks = new List<Task>();
             var p = ScoreCard.NewScoreCard();
             Console.WriteLine(p);
-            var g = Guid.NewGuid();
+                var g = Guid.NewGuid();
             Console.WriteLine(g);
-            p.Id = g.ToString();
+                p.Id = g.ToString();
 
-            int loops = 1000;
-            p = CosmosDbHelper.CreateDocument(primaryContext, p);
-            Console.WriteLine(p.ToString());
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
+                int loops = 200;
+            var p2 = CosmosDbHelper.CreateDocumentAsync(primaryContext, p);
+            p.Id = Guid.NewGuid().ToString();
+            p2 = CosmosDbHelper.CreateDocumentAsync(primaryContext, p);
+            //    Console.WriteLine(p.ToString());
+            p2.Wait();
+                readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(secondaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            readTasks.Add(this.ReadDocumentsAsync(secondaryContext, g));
+            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
 
-            //writeTasks.Add(this.ReadDocumentsAsync(primaryContext, g, 4000));
-
-            //Console.WriteLine("Start writing {0}", DateTime.UtcNow);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops, 
-                (card, score) => card.Player1 = score )
-            );
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player2 = score)
-);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player3 = score)
-);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player4 = score)
-);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player5 = score)
-);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player6 = score)
-);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player7 = score)
-);
-            writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
-    (card, score) => card.Player8 = score)
-);
+            writeTasks.Add(WriteDocumentsAsync(primaryContext
+                , new ScoreCard()
+                {
+                    Id = "1",
+                    Round = g.ToString(),
+                    Player = 1,
+                }
+                , loops
+                ));
+            writeTasks.Add(WriteDocumentsAsync(secondaryContext
+                , new ScoreCard()
+                {
+                    Id = "2",
+                    Round = g.ToString(),
+                    Player = 2,
+                }
+                , loops
+                ));
+            writeTasks.Add(WriteDocumentsAsync(primaryContext
+    , new ScoreCard()
+    {
+        Id = "3",
+        Round = g.ToString(),
+        Player = 3,
+    }
+    , loops
+    ));
+            writeTasks.Add(WriteDocumentsAsync(secondaryContext
+, new ScoreCard()
+{
+Id = "4",
+Round = g.ToString(),
+Player = 4,
+}
+, loops
+));
+            writeTasks.Add(WriteDocumentsAsync(primaryContext
+, new ScoreCard()
+{
+Id = "5",
+Round = g.ToString(),
+Player = 5,
+}
+, loops
+));
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player1 = score )
+            //);
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player2 = score)
+            //);
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player3 = score)
+            //);
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player4 = score)
+            //);
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player5 = score)
+            //);
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player6 = score)
+            //);
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player7 = score)
+            //);
+            //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
+            //    (card, score) => card.Player8 = score)
+            //);
             //Console.WriteLine("Stop writing {0}", DateTime.UtcNow);
 
             //var readTasks = new List<Task>();
@@ -245,52 +313,99 @@ namespace WorkBench
             Task.WaitAll(readTasks.ToArray());
         }
 
-        private async Task WriteDocumentsAsync(DocumentCollectionContext primaryContext, ScoreCard p, int loops, Action<ScoreCard, int> updateScore)
+        private async Task WriteDocumentsAsync(DocumentCollectionContext primaryContext, ScoreCard p, int loops, Action<ScoreCard, int> updateScore = null)
         {
-            for (int i = 0; i < loops; i++)
+            for (int i = 0; i < loops && this.MakeWrites; i++)
             {
                 //Console.WriteLine("Upsert");
-                updateScore(p, i);
+                //updateScore(p, i);
+                p.Score = i;
                 var x = await CosmosDbHelper.UpsertDocumentAsync(primaryContext, p);
+                p = x;
 
             }
+
         }
 
-        private async Task ReadDocumentsAsync(DocumentCollectionContext context, Guid g, int loops)
+        private async Task ReadDocumentsAsync(DocumentCollectionContext context, Guid g, int loops = 4000)
         {
             //Console.WriteLine("Start reading {0}", DateTime.UtcNow);
             var prevP = ScoreCard.NewScoreCard();
             int loop_num = 0;
 
-            Action<ScoreCard, ScoreCard> consistencyCheck = (t1, t2) =>
-            {
-                if (t2.Player1 < t1.Player1 ||
-                    t2.Player2 < t1.Player2 ||
-                    t2.Player3 < t1.Player3 ||
-                    t2.Player4 < t1.Player4 ||
-                    t2.Player5 < t1.Player5 ||
-                    t2.Player6 < t1.Player6 ||
-                    t2.Player7 < t1.Player7 ||
-                    t2.Player8 < t1.Player8)
-                {
-                    throw new Exception(
-                        String.Format("Inconsistent data read! \n T2: {0}\n T1: {1}", t2,t1)
-                        );
-                }
-            };
-
+            //Action<ScoreCard, ScoreCard> consistencyCheck = (t1, t2) =>
+            //{
+            //    if (t2.Player1 < t1.Player1 ||
+            //        t2.Player2 < t1.Player2 ||
+            //        t2.Player3 < t1.Player3 ||
+            //        t2.Player4 < t1.Player4 ||
+            //        t2.Player5 < t1.Player5 ||
+            //        t2.Player6 < t1.Player6 ||
+            //        t2.Player7 < t1.Player7 ||
+            //        t2.Player8 < t1.Player8)
+            //    {
+            //        //this.MakeWrites = false; //stop the write process.
+            //        throw new Exception(
+            //            String.Format("Inconsistent data read! \n T2: {0}\n T1: {1}", t2,t1)
+            //            );
+            //    }
+            //};
+            List<ScoreCard> prev_c = new List<ScoreCard>();
+            var predicates = new System.Collections.Specialized.NameValueCollection() { { "Round", g.ToString() } };
             while (ContinousRead)
             {
                 //context.RefreshClient();
                 //Console.WriteLine("Read");
-                var chance1 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
-                var chance2 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
-                var chance3 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+
+                
+                var r = await CosmosDbHelper.RequestDocumentByEquality<ScoreCard>(context, g.ToString(), predicates);
+                var c = r.ToList();
+
+                var r2 = await CosmosDbHelper.RequestDocumentByEquality<ScoreCard>(context, g.ToString(), predicates);
+                var c2 = r2.ToList();
+
+                for (int i = 0; i < prev_c.Count; i++)
+                {
+                    if (prev_c[i].Player != c[i].Player)
+                        throw new Exception("Unexpected player.");
+                    if (prev_c[i].Round != c[i].Round)
+                        throw new Exception("Unexpected round.");
+                    if (prev_c[i].Score > c[i].Score)
+                        throw new Exception("Bang");
+                }
+
+                for (int i = 0; i < c.Count; i++)
+                {
+                    if (c[i].Player != c2[i].Player)
+                        throw new Exception("Unexpected player.");
+                    if (c[i].Round != c2[i].Round)
+                        throw new Exception("Unexpected round.");
+                    if (c[i].Score > c2[i].Score)
+                        throw new Exception("Bang");
+                }
+
+                prev_c = c2;
+                //context.RefreshClient();
+                //var tsk1 = CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                //tsk1.Wait();
+
+                //var chance1 = tsk1.Result;
+
+                //var chance2 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                //var chance3 = chance2;
+                //var chance3 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+
+                //var chance1 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                //var chance2 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+                //var chance3 = await CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
+
+
+
                 //await Task.Delay(TimeSpan.FromMilliseconds(5));
-                var newP = (ScoreCard)chance1;
+                //var newP = (ScoreCard)chance1;
                 //Console.Write(newP.Timestamp.ToString("MM/dd/yyyy hh:mm:ss.fff tt") + ",");
-                consistencyCheck((ScoreCard)chance1, (ScoreCard)chance2);
-                consistencyCheck((ScoreCard)chance2, (ScoreCard)chance3);
+                //consistencyCheck((ScoreCard)chance1, (ScoreCard)chance2);
+                //consistencyCheck((ScoreCard)chance2, (ScoreCard)chance3);
 
                 //readTasks.Add(x);
                 if (loop_num == loops) break;

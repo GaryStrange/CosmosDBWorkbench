@@ -14,8 +14,6 @@ namespace WorkBench.DataAccess
 {
     public static class CosmosDbHelper
     {
-
-
         public static async Task CreateDatabaseIfNotExists(DocumentClient client, string databaseName)
         {
             // Check to verify a database does not exist
@@ -53,7 +51,7 @@ namespace WorkBench.DataAccess
             }
         }
 
-        public static async Task DeleteCollectionIfExists(DocumentCollectionContext context)
+        public static async Task DeleteCollectionIfExistsAsync(DocumentCollectionContext context)
         {
             try
             {
@@ -87,7 +85,9 @@ namespace WorkBench.DataAccess
                 var result = client.CreateDocumentCollectionAsync(
                     UriFactory.CreateDatabaseUri(databaseName),
                     collectionInfo,
-                    new RequestOptions { OfferThroughput = collectionConfig.offerThroughput, ConsistencyLevel = ConsistencyLevel.Eventual }).Result;
+                    new RequestOptions {
+                        OfferThroughput = collectionConfig.offerThroughput
+                    }).Result;
 
                 collectionInfo = result.Resource;
             }
@@ -213,9 +213,9 @@ namespace WorkBench.DataAccess
 
             return await context.Client.ReadDocumentAsync<T>(
                     docUri,
-                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
+                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }//, ConsistencyLevel = ConsistencyLevel.Eventual }
                 )
-                .ContinueWith(tsk => context.ProcessDocumentResponse(
+                .ContinueWith(tsk => context.ResponseProcessor.ProcessDocumentResponse(
                     String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue)
                     , tsk)
                  );
@@ -231,9 +231,9 @@ namespace WorkBench.DataAccess
 
             return await context.Client.ReadDocumentAsync(
                     docUri,
-                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue), ConsistencyLevel = ConsistencyLevel.Eventual }
+                    new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) }
                 )
-                .ContinueWith(tsk => context.ProcessResourceResponse(
+                .ContinueWith(tsk => context.ResponseProcessor.ProcessResourceResponse(
                     String.Format("Read Document by id ({0}), partition ({1})", documentId, partitionKeyValue)
                     , tsk)
                  );
@@ -245,14 +245,15 @@ namespace WorkBench.DataAccess
         {
             return string.Join("AND",
             Enumerable.Range(0, attributes.Count)
-                .Select(i => tableAlias + "." + attributes.GetKey(i) + " = " + attributes.GetValues(i).FirstOrDefault())
+                .Select(i => tableAlias + "." + attributes.GetKey(i) + " = \"" + attributes.GetValues(i).FirstOrDefault() + "\"")
                 );
         }
 
-        public static FeedResponse<T> RequestDocumentByEquality<T>(ICollectionContext context, object PartitionKeyValue, NameValueCollection equalityAttributes) where T : Resource, IPartitionedDocument
+        public async static Task<FeedResponse<T>> RequestDocumentByEquality<T>(ICollectionContext context, object PartitionKeyValue, NameValueCollection equalityAttributes) where T : Resource, IPartitionedDocument
         {
+            var query = String.Format("SELECT * FROM c WHERE {0}", EqualityPredicate(equalityAttributes));
             var request = context.Client.CreateDocumentQuery<T>(context.CollectionUri
-                , String.Format("SELECT * FROM c WHERE {0}", EqualityPredicate(equalityAttributes))
+                , query
                 , new FeedOptions()
                 {
                     PartitionKey = PartitionKeyValue is null ? null : new PartitionKey(PartitionKeyValue),
@@ -261,7 +262,13 @@ namespace WorkBench.DataAccess
                 )
                 .AsDocumentQuery();
 
-            return request.ExecuteNextAsync<T>().Result;
+            return await request.ExecuteNextAsync<T>()
+                .ContinueWith( tsk =>
+                    context.ResponseProcessor.ProcessFeedResponse(
+                        String.Format("Request documents by partition ({0})", PartitionKeyValue)
+                        , tsk
+                    )
+                );
         }
 
         public static FeedResponse<T> RequestDocument<T>(ICollectionContext context, string Id, object PartitionKeyValue) where T : Resource, IPartitionedDocument
@@ -305,11 +312,12 @@ namespace WorkBench.DataAccess
 
         public static async Task<T> CreateDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource
         {
-            var response = await context.Client.CreateDocumentAsync(context.CollectionUri, doc,
-                new RequestOptions()
-                {
-                    ConsistencyLevel = ConsistencyLevel.Eventual
-                });
+            var response = await context.Client.CreateDocumentAsync(context.CollectionUri, doc
+                )
+                .ContinueWith(tsk => context.ResponseProcessor.ProcessResourceResponse(
+                    String.Format("Create Document id ({0})", doc.Id)
+                    , tsk)
+                    );
             return (dynamic)response.Resource;
         }
 
@@ -326,14 +334,20 @@ namespace WorkBench.DataAccess
             return (dynamic)response.Resource;
         }
 
-        public static async Task<T> UpsertDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource
+        public static async Task<T> UpsertDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource, IPartitionedDocument
         {
             ResourceResponse<Document> response = await context.Client.UpsertDocumentAsync(context.CollectionUri, doc,
                 new RequestOptions()
                 {
-                    ConsistencyLevel = ConsistencyLevel.Eventual
+                    //PartitionKey = new PartitionKey(doc.PartitionKeyValue),
+                    ////ConsistencyLevel = ConsistencyLevel.Eventual
+                    //AccessCondition = new AccessCondition
+                    //{
+                    //    Condition = doc.ETag,
+                    //    Type = AccessConditionType.IfMatch
+                    //}
                 })
-                                .ContinueWith(tsk => context.ProcessResourceResponse(
+                    .ContinueWith(tsk => context.ResponseProcessor.ProcessResourceResponse(
                     String.Format("Upsert Document id ({0}), partition ({1})", doc.Id, doc.Id)
                     , tsk)
                  );

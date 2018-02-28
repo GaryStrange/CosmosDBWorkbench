@@ -16,7 +16,8 @@ namespace WorkBench.DataAccess
             return new DocumentClient(
                 new Uri(config.endPointUrl),
                 config.authKey,
-                config.GetConnectionPolicy()
+                config.GetConnectionPolicy(),
+                config.DefaultConsistencyLevel
                 );
 
         }
