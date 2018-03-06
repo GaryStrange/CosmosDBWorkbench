@@ -339,7 +339,7 @@ namespace WorkBench.DataAccess
             ResourceResponse<Document> response = await context.Client.UpsertDocumentAsync(context.CollectionUri, doc,
                 new RequestOptions()
                 {
-                    //PartitionKey = new PartitionKey(doc.PartitionKeyValue),
+                    PartitionKey = new PartitionKey(doc.PartitionKeyValue),
                     ////ConsistencyLevel = ConsistencyLevel.Eventual
                     //AccessCondition = new AccessCondition
                     //{

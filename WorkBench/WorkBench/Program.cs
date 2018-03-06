@@ -350,6 +350,7 @@ Player = 5,
             //            );
             //    }
             //};
+            Microsoft.Azure.Documents.Client.FeedResponse<ScoreCard> prev_r = new Microsoft.Azure.Documents.Client.FeedResponse<ScoreCard>();
             List<ScoreCard> prev_c = new List<ScoreCard>();
             var predicates = new System.Collections.Specialized.NameValueCollection() { { "Round", g.ToString() } };
             while (ContinousRead)
@@ -371,7 +372,7 @@ Player = 5,
                     if (prev_c[i].Round != c[i].Round)
                         throw new Exception("Unexpected round.");
                     if (prev_c[i].Score > c[i].Score)
-                        throw new Exception("Bang");
+                        throw new Exception(String.Format("Inconsistent data read! \n Session Token: {2} \n T2: {0}\n SessionToken: {3}\n T1: {1}", c[i], prev_c[i], r.SessionToken, prev_r.SessionToken ));
                 }
 
                 for (int i = 0; i < c.Count; i++)
@@ -381,10 +382,12 @@ Player = 5,
                     if (c[i].Round != c2[i].Round)
                         throw new Exception("Unexpected round.");
                     if (c[i].Score > c2[i].Score)
-                        throw new Exception("Bang");
+                        //throw new Exception(String.Format("Inconsistent data read! \n T2: {0}\n T1: {1}", c2[i], c[i]));
+                    throw new Exception(String.Format("Inconsistent data read! \n Session Token: {2} \n T2: {0}\n SessionToken: {3}\n T1: {1}", c2[i], c[i], r2.SessionToken, r.SessionToken));
                 }
 
                 prev_c = c2;
+                prev_r = r2;
                 //context.RefreshClient();
                 //var tsk1 = CosmosDbHelper.ReadDocument<ScoreCard>(context, g.ToString(), g.ToString());
                 //tsk1.Wait();
