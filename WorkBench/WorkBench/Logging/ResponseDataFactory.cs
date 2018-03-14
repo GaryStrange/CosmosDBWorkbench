@@ -24,7 +24,7 @@ namespace WorkBench.Logging
                 RequestInfo = requestInfo,
                 ActivityId = response.ActivityId,
                 RequestCharge = response.RequestCharge,
-                QueryMetrics = JsonConvert.SerializeObject(response.QueryMetrics[""], Formatting.Indented)
+                QueryMetrics = JsonConvert.SerializeObject(response.QueryMetrics["0"], Formatting.Indented)
             };
         }
     }

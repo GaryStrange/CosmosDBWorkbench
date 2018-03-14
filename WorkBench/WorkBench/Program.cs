@@ -371,7 +371,7 @@ Player = 5,
                     if (prev_c[i].Round != c[i].Round)
                         throw new Exception("Unexpected round.");
                     if (prev_c[i].Score > c[i].Score)
-                        throw new Exception("Bang");
+                        throw new Exception(String.Format("Bang \n T2: {0}\n T1: {1}", prev_c[i], c[i]));
                 }
 
                 for (int i = 0; i < c.Count; i++)
@@ -381,7 +381,7 @@ Player = 5,
                     if (c[i].Round != c2[i].Round)
                         throw new Exception("Unexpected round.");
                     if (c[i].Score > c2[i].Score)
-                        throw new Exception("Bang");
+                        throw new Exception(String.Format("Bang \n T2: {0}\n T1: {1}", prev_c[i], c[i]));
                 }
 
                 prev_c = c2;
