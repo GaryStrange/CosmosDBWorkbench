@@ -18,6 +18,11 @@ namespace WorkBench
 
         private bool ContinousRead = true;
         private bool MakeWrites = true;
+        private List<Task> writeTasks = new List<Task>();
+        private int delayMs = 50;
+
+        private DocumentCollectionContext primaryContext;
+        private Guid g;
 
         static void Main(string[] args)
         {
@@ -45,9 +50,28 @@ namespace WorkBench
                 );
 
             var program = new Program();
-            program.EventualConsistencyTest(config);
-            Console.WriteLine("Press any key.");
-            Console.ReadKey();
+            Console.WriteLine("Key 1 for Eventual Consistency Test.");
+            Console.WriteLine("Key 2 for Read Scale Test.");
+            ConsoleKeyInfo cki;
+            cki = Console.ReadKey();
+            if (cki.Key == ConsoleKey.D1) program.EventualConsistencyTest(config);
+            else if (cki.Key == ConsoleKey.D2)
+            {
+                program.ScaleTest(config);
+
+                Console.WriteLine("Press Esc to Exit.");
+                do
+                {
+                    cki = Console.ReadKey();
+                    Console.Write(" --- You pressed ");
+                    if (cki.Key == ConsoleKey.DownArrow) program.delayMs += 10;
+                    if (cki.Key == ConsoleKey.UpArrow && program.delayMs != 0)
+                        program.delayMs -= 10;
+                    //if (cki.Key == ConsoleKey.RightArrow) program.ScaleOut();
+                    Console.WriteLine(cki.Key.ToString());
+                } while (cki.Key != ConsoleKey.Escape);
+                program.MakeWrites = false;
+            }
             return;
             var masterKeyContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
@@ -178,9 +202,37 @@ namespace WorkBench
             Console.ReadKey();
         }
 
-        public void EventualConsistencyTest(CosmosDbClientConfig config)
-        { 
+        private void ScaleOut(List<Task> writeTasks, DocumentCollectionContext context, int loops = 300)
+        {
+            writeTasks.Add(WriteDocumentsAsync(context
+                , new ScoreCard()
+                {
+                    Id = (writeTasks.Count() + 1).ToString(),
+                    Round = g.ToString(),
+                    Player = writeTasks.Count() + 1,
+                }
+                , loops
+                ));
+        }
+
+        public async void ScaleTest(CosmosDbClientConfig config)
+        {
             var primaryContext =
+               DocumentCollectionContextFactory.CreateCollectionContext(
+                   config
+                   , new ResponseProcessor((s) => Console.WriteLine(s))
+               );
+
+            g = Guid.NewGuid();
+
+            var writeTasks = new List<Task>();
+            this.ScaleOut(writeTasks, primaryContext, -1);
+            this.ScaleOut(writeTasks, primaryContext, -1);
+            await Task.WhenAll(writeTasks.ToArray());
+        }
+        public async void EventualConsistencyTest(CosmosDbClientConfig config)
+        { 
+             var primaryContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     config
                     , new ResponseProcessor( (s) => Console.WriteLine(s) )
@@ -197,11 +249,12 @@ namespace WorkBench
             var readTasks = new List<Task>();
             var p = ScoreCard.NewScoreCard();
             Console.WriteLine(p);
-                var g = Guid.NewGuid();
-            Console.WriteLine(g);
+            g = Guid.NewGuid();
+            Debug.WriteLine(g);
+            Console.ReadKey();
                 p.Id = g.ToString();
 
-                int loops = 200;
+                int loops = 300;
             var p2 = CosmosDbHelper.CreateDocumentAsync(primaryContext, p);
             p.Id = Guid.NewGuid().ToString();
             p2 = CosmosDbHelper.CreateDocumentAsync(primaryContext, p);
@@ -211,57 +264,56 @@ namespace WorkBench
             readTasks.Add(this.ReadDocumentsAsync(secondaryContext, g));
             readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
             readTasks.Add(this.ReadDocumentsAsync(secondaryContext, g));
-            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
-            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
-            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
-            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
-            //readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
 
-            writeTasks.Add(WriteDocumentsAsync(primaryContext
-                , new ScoreCard()
-                {
-                    Id = "1",
-                    Round = g.ToString(),
-                    Player = 1,
-                }
-                , loops
-                ));
-            writeTasks.Add(WriteDocumentsAsync(secondaryContext
-                , new ScoreCard()
-                {
-                    Id = "2",
-                    Round = g.ToString(),
-                    Player = 2,
-                }
-                , loops
-                ));
-            writeTasks.Add(WriteDocumentsAsync(primaryContext
-    , new ScoreCard()
-    {
-        Id = "3",
-        Round = g.ToString(),
-        Player = 3,
-    }
-    , loops
-    ));
-            writeTasks.Add(WriteDocumentsAsync(secondaryContext
-, new ScoreCard()
-{
-Id = "4",
-Round = g.ToString(),
-Player = 4,
-}
-, loops
-));
-            writeTasks.Add(WriteDocumentsAsync(primaryContext
-, new ScoreCard()
-{
-Id = "5",
-Round = g.ToString(),
-Player = 5,
-}
-, loops
-));
+            readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            ////readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            ////readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            ////readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+            ////readTasks.Add(this.ReadDocumentsAsync(primaryContext, g));
+
+
+            this.ScaleOut(writeTasks, primaryContext);
+            this.ScaleOut(writeTasks, secondaryContext);
+            this.ScaleOut(writeTasks, primaryContext);
+            this.ScaleOut(writeTasks, secondaryContext);
+
+    //        writeTasks.Add(WriteDocumentsAsync(primaryContext
+    //, new ScoreCard()
+    //{
+    //    Id = (writeTasks.Count() + 1).ToString(),
+    //    Round = g.ToString(),
+    //    Player = writeTasks.Count() + 1,
+    //}
+    //, loops
+    //));
+    //        writeTasks.Add(WriteDocumentsAsync(secondaryContext
+    //, new ScoreCard()
+    //{
+    //    Id = (writeTasks.Count() + 1).ToString(),
+    //    Round = g.ToString(),
+    //    Player = writeTasks.Count() + 1,
+    //}
+    //, loops
+    //));
+    //        writeTasks.Add(WriteDocumentsAsync(primaryContext
+    //, new ScoreCard()
+    //{
+    //    Id = (writeTasks.Count() + 1).ToString(),
+    //    Round = g.ToString(),
+    //    Player = writeTasks.Count() + 1,
+    //}
+    //, loops
+    //));
+    //        writeTasks.Add(WriteDocumentsAsync(secondaryContext
+    //, new ScoreCard()
+    //{
+    //    Id = (writeTasks.Count() + 1).ToString(),
+    //    Round = g.ToString(),
+    //    Player = writeTasks.Count() + 1,
+    //}
+    //, loops
+    //));
+
             //writeTasks.Add(WriteDocumentsAsync(primaryContext, p, loops,
             //    (card, score) => card.Player1 = score )
             //);
@@ -308,19 +360,30 @@ Player = 5,
             //    loop_num++;
             //}
 
+            //await Task.WhenAll(writeTasks.ToArray());
+
             Task.WaitAll(writeTasks.ToArray());
+            Console.WriteLine("Writes finished.");
             ContinousRead = false;
             Task.WaitAll(readTasks.ToArray());
         }
 
         private async Task WriteDocumentsAsync(DocumentCollectionContext primaryContext, ScoreCard p, int loops, Action<ScoreCard, int> updateScore = null)
         {
-            for (int i = 0; i < loops && this.MakeWrites; i++)
+            Func<int, bool> loopCheck;
+            if (loops == -1) loopCheck = (i) => true;
+            else loopCheck = (i) => i < loops;
+
+            for (int i = 0; 
+                loopCheck(i) && 
+                this.MakeWrites
+                ; i++)
             {
                 //Console.WriteLine("Upsert");
                 //updateScore(p, i);
                 p.Score = i;
                 var x = await CosmosDbHelper.UpsertDocumentAsync(primaryContext, p);
+                if (this.delayMs> 0) await Task.Delay(this.delayMs);
                 p = x;
 
             }
@@ -413,6 +476,7 @@ Player = 5,
                 //readTasks.Add(x);
                 if (loop_num == loops) break;
                 loop_num++;
+                //await Task.Delay(this.delayMs);
             }
             //Console.WriteLine("Stop reading {0}", DateTime.UtcNow);
         }
