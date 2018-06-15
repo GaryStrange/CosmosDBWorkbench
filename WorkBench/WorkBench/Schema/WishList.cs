@@ -14,6 +14,9 @@ namespace WorkBench.Schema
         public string CustomerId { get; set; }
 
         [JsonProperty]
+        public string Name { get; set; }
+
+        [JsonProperty]
         public Wish[] Wishes { get; set; }
 
         [JsonProperty(PropertyName = "_ts")]
@@ -25,10 +28,12 @@ namespace WorkBench.Schema
     public class Wish
     {
         [Index(IsIncluded = true, HasEqualtiyQueries = true)]
-        public string Name { get; set; }
+        public string SavedItemId { get; set; }
 
-        public string Size { get; set; }
-
+        [JsonProperty]
         public DateTime CreatedDate { get; set; }
+
+        [JsonProperty]
+        public string ImageUrl { get; set; }
     }
 }

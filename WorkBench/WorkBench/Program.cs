@@ -9,6 +9,7 @@ using WorkBench.Schema;
 using WorkBench.Security;
 using System.Linq;
 using WorkBench.Logging;
+using WorkBench.Configuration;
 
 namespace WorkBench
 {
@@ -32,46 +33,51 @@ namespace WorkBench
 
             Configuration = builder.Build();
 
-            Action<string> print = (string s) => { Console.WriteLine("{0} = {1}", s, Configuration[s]); };
-            print("EndPointUrl");
-            print("DatabaseName");
-            print("CollectionName");
-            print("PartitionKeyPath");
-            print("ConsistencyLevel");
-            print("OfferThroughput");
+
+            IConfigurationSection section = Configuration.GetSection("ForScoreCard");
+
+
 
             var config = CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
-                Configuration["EndPointUrl"],
-                Configuration["AuthorizationKey"],
-                Configuration["DatabaseName"],
-                Configuration["CollectionName"],
-                Configuration["PartitionKeyPath"],
-                Configuration["ConsistencyLevel"]
+                section["EndPointUrl"],
+                section["AuthorizationKey"],
+                section["DatabaseName"],
+                section["CollectionName"],
+                section["PartitionKeyPath"],
+                section["ConsistencyLevel"]
                 );
 
             var program = new Program();
             Console.WriteLine("Key 1 for Eventual Consistency Test.");
             Console.WriteLine("Key 2 for Read Scale Test.");
+            Console.WriteLine("Key 3 for Saved Items Test.");
             ConsoleKeyInfo cki;
             cki = Console.ReadKey();
-            if (cki.Key == ConsoleKey.D1) program.EventualConsistencyTest(config);
-            else if (cki.Key == ConsoleKey.D2)
+            switch (cki.Key)
             {
-                program.ScaleTest(config);
+                case ConsoleKey.D1: program.EventualConsistencyTest(config); break;
+                case ConsoleKey.D2:
+                    {
+                        program.ScaleTest(config);
 
-                Console.WriteLine("Press Esc to Exit.");
-                do
-                {
-                    cki = Console.ReadKey();
-                    Console.Write(" --- You pressed ");
-                    if (cki.Key == ConsoleKey.DownArrow) program.delayMs += 10;
-                    if (cki.Key == ConsoleKey.UpArrow && program.delayMs != 0)
-                        program.delayMs -= 10;
-                    //if (cki.Key == ConsoleKey.RightArrow) program.ScaleOut();
-                    Console.WriteLine(cki.Key.ToString());
-                } while (cki.Key != ConsoleKey.Escape);
-                program.MakeWrites = false;
+                        Console.WriteLine("Press Esc to Exit.");
+                        do
+                        {
+                            cki = Console.ReadKey();
+                            Console.Write(" --- You pressed ");
+                            if (cki.Key == ConsoleKey.DownArrow) program.delayMs += 10;
+                            if (cki.Key == ConsoleKey.UpArrow && program.delayMs != 0)
+                                program.delayMs -= 10;
+                            //if (cki.Key == ConsoleKey.RightArrow) program.ScaleOut();
+                            Console.WriteLine(cki.Key.ToString());
+                        } while (cki.Key != ConsoleKey.Escape);
+                        program.MakeWrites = false;
+                    }; break;
+                case ConsoleKey.D3: program.SavedItemsTest(Configuration); break;
             }
+            Console.WriteLine();
+            Console.WriteLine("End of program.");
+            Console.ReadKey();
             return;
             var masterKeyContext =
                 DocumentCollectionContextFactory.CreateCollectionContext(
@@ -80,17 +86,17 @@ namespace WorkBench
                 );
             //SecurityTest(masterKeyContext);
 
-            WishList list = CreateWishList();
+            WishList list = CreateWishList("Gift List");
 
             list = CosmosDbHelper.CreateDocument(masterKeyContext, list);
 
-            Console.WriteLine("Wish Size = {0}", list.Wishes[0].Size);
+            //Console.WriteLine("Wish Size = {0}", list.Wishes[0].Size);
             Console.WriteLine("_ts = {0}", list.TTL);
 
-            list.Wishes[0].Size = "Medium";
+            //list.Wishes[0].Size = "Medium";
             list = CosmosDbHelper.UpsertDocument(masterKeyContext, list);
 
-            Console.WriteLine("Wish Size = {0}", list.Wishes[0].Size);
+            //Console.WriteLine("Wish Size = {0}", list.Wishes[0].Size);
             Console.WriteLine("_ts after document update = {0}", list.TTL);
 
             var predicates = new System.Collections.Specialized.NameValueCollection() { { "_ts", list.TTL.ToString() } };
@@ -100,15 +106,48 @@ namespace WorkBench
             Console.ReadKey();
         }
 
-        private static WishList CreateWishList()
+        public void SavedItemsTest(IConfigurationRoot config)
         {
+            var section = Configuration.GetSection("ForSavedItemsConfig");
+
+            section.PrintConfigurationValues(Console.WriteLine);
+
+            var cosmosConfig = CosmosDbClientConfig.CreateDocDbConfigFromAppConfig(
+                section["EndPointUrl"],
+                section["AuthorizationKey"],
+                section["DatabaseName"],
+                section["CollectionName"],
+                section["PartitionKeyPath"],
+                section["ConsistencyLevel"]
+                );
+
+            var masterKeyContext =
+                DocumentCollectionContextFactory.CreateCollectionContext(
+                    cosmosConfig
+                    , new ResponseProcessor((s) => Debug.WriteLine(s))
+                );
+
+            CosmosDbHelper.CreateDocument(masterKeyContext, Program.CreateWishList("Party List"));
+        }
+        private static WishList CreateWishList(string name)
+        {
+
+            Wish[] wishes = new Wish[500];
+            for (int i = 0; i < 100; i++)
+            {
+                wishes[i] = new Wish()
+                {
+                    SavedItemId = Guid.NewGuid().ToString(),
+                    CreatedDate = DateTime.Now,
+                    ImageUrl = "images.asos-media.com/products/jack-jones-dark-blue-washed-jeans-in-loose-fit-with-engineered-details/6737719-1-darkblue"
+                };
+            }
+
             return new WishList()
             {
                 CustomerId = Guid.NewGuid().ToString(),
-                Wishes = new Wish[1]
-                {
-                    new Wish() { Name = "Wish upon a star", Size = "Big" }
-                }
+                Wishes = wishes,
+                Name = name
 
             };
         }
