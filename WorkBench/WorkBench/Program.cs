@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -50,7 +51,9 @@ namespace WorkBench
             var program = new Program();
             Console.WriteLine("Key 1 for Eventual Consistency Test.");
             Console.WriteLine("Key 2 for Read Scale Test.");
-            Console.WriteLine("Key 3 for Saved Items Test.");
+            Console.WriteLine("Key 3 for Saved Items Wishlist Document Test.");
+            Console.WriteLine("Key 4 for Saved Items 500 item test.");
+            Console.WriteLine("Key 5 for Cross Partition test.");
             ConsoleKeyInfo cki;
             cki = Console.ReadKey();
             switch (cki.Key)
@@ -74,6 +77,8 @@ namespace WorkBench
                         program.MakeWrites = false;
                     }; break;
                 case ConsoleKey.D3: program.SavedItemsTest(Configuration); break;
+                case ConsoleKey.D4: program.SavedItems500Test(Configuration); break;
+                case ConsoleKey.D5: program.CrossPartitionTest(Configuration); break;
             }
             Console.WriteLine();
             Console.WriteLine("End of program.");
@@ -106,9 +111,19 @@ namespace WorkBench
             Console.ReadKey();
         }
 
-        public void SavedItemsTest(IConfigurationRoot config)
+        private void CrossPartitionTest(IConfigurationRoot configuration)
         {
-            var section = Configuration.GetSection("ForSavedItemsConfig");
+            var masterKeyContext = this.CreateContextFromAppConfig(configuration, "ForSavedItemsConfig");
+
+            var predicates = new System.Collections.Specialized.NameValueCollection() { { "customerId", "ee6487d7-4639-4a0e-95f9-c2bcb227b13a" } };
+            var response = CosmosDbHelper.RequestDocumentByEquality<WishList>(masterKeyContext, null, predicates);
+
+            response.Wait();
+        }
+
+        private DocumentCollectionContext CreateContextFromAppConfig(IConfigurationRoot config, string sectionName)
+        {
+            var section = Configuration.GetSection(sectionName);
 
             section.PrintConfigurationValues(Console.WriteLine);
 
@@ -121,26 +136,88 @@ namespace WorkBench
                 section["ConsistencyLevel"]
                 );
 
-            var masterKeyContext =
+            return
                 DocumentCollectionContextFactory.CreateCollectionContext(
                     cosmosConfig
                     , new ResponseProcessor((s) => Debug.WriteLine(s))
                 );
+        }
+        public void SavedItems500Test(IConfigurationRoot config)
+        {
+            var masterKeyContext = this.CreateContextFromAppConfig(config, "ForSavedItemsConfig");
 
-            CosmosDbHelper.CreateDocument(masterKeyContext, Program.CreateWishList("Party List"));
+            CustomerLifecycleStatus status = new CustomerLifecycleStatus() { Status = "AddToList" };
+            string CustomerId = Guid.NewGuid().ToString();
+
+            List<Task<CustomerSavedItem>> tasks = new List<Task<CustomerSavedItem>>();
+            for (int i = 0; i < 500; i++)
+            {
+                tasks.Add(
+                CosmosDbHelper.CreateDocumentAsync(masterKeyContext,
+                    new CustomerSavedItem(
+                        new List<CustomerLifecycleStatus>() { status.Touch() },
+                        Guid.NewGuid().ToString()
+                        )
+                    { CustomerId = CustomerId,
+                    Uuid = CustomerId}
+                        )
+                        );
+
+            }
+            Task.WaitAll(tasks.ToArray());
+
+            status = new CustomerLifecycleStatus() { Status = "AddToWishList" };
+
+            List<Task<CustomerSavedItem>> addToWishListtasks = new List<Task<CustomerSavedItem>>();
+            tasks.ForEach(t =>
+            {
+                var doc = t.Result;
+                doc.Tags = new string[1] { "Birthday List" };
+                doc.LifecycleStatus.Add(status);
+                addToWishListtasks.Add(
+                    CosmosDbHelper.UpsertDocumentAsync(masterKeyContext, t.Result)
+                    );
+                    }
+                    );
+
+            Task.WaitAll(addToWishListtasks.ToArray());
+
+        }
+
+        
+        public void SavedItemsTest(IConfigurationRoot config)
+        {
+            var masterKeyContext = this.CreateContextFromAppConfig(config, "ForSavedItemsConfig");
+
+            WishList wList = CosmosDbHelper.CreateDocument(masterKeyContext, Program.CreateWishList("Party List"));
+            CosmosDbHelper.ReadDocumentAsync(masterKeyContext, wList).Wait();
+            CosmosDbHelper.GetDocument<WishList>(masterKeyContext, wList.Id, wList.PartitionKeyValue);
+            //var newList = Program.CreateWishList("Party List");
+            //newList.Id = wList.Id;
+            //newList.PartitionKeyValue = wList.PartitionKeyValue;
+            wList.Wishes.Remove(wList.Wishes[0]);
+            for (int i = 0; i < 20; i++)
+            {
+                wList.Wishes[i].ImageUrl = "images.asos-media.com/products/jack-jones-dark-blue-washed-jeans-in-loose-fit-with-engineered-details/6737719-1-darkblue";
+                wList.Wishes[i].SavedItemId = Guid.NewGuid().ToString();
+            }
+            wList.Wishes.Add(new Wish() { SavedItemId = Guid.NewGuid().ToString(), CreatedDate = DateTime.Now });
+            
+            CosmosDbHelper.UpsertDocumentAsync(masterKeyContext, wList).Wait();
+
         }
         private static WishList CreateWishList(string name)
         {
 
-            Wish[] wishes = new Wish[500];
-            for (int i = 0; i < 100; i++)
+            List<Wish> wishes = new List<Wish>(500);
+            for (int i = 0; i < 500; i++)
             {
-                wishes[i] = new Wish()
+                wishes.Add( new Wish()
                 {
                     SavedItemId = Guid.NewGuid().ToString(),
-                    CreatedDate = DateTime.Now,
-                    ImageUrl = "images.asos-media.com/products/jack-jones-dark-blue-washed-jeans-in-loose-fit-with-engineered-details/6737719-1-darkblue"
-                };
+                    CreatedDate = DateTime.Now//,
+                    //ImageUrl = "images.asos-media.com/products/jack-jones-dark-blue-washed-jeans-in-loose-fit-with-engineered-details/6737719-1-darkblue"
+                });
             }
 
             return new WishList()

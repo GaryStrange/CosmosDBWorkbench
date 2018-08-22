@@ -12,6 +12,12 @@ namespace WorkBench.Schema
     {
         public string Status { get; set; }
         public DateTime Timestamp { get; set; }
+
+        public CustomerLifecycleStatus Touch()
+        {
+            this.Timestamp = DateTime.Now;
+            return this;
+        }
     }
 
     public class CustomerSavedItem : Document, IPartitionedDocument
@@ -57,6 +63,7 @@ namespace WorkBench.Schema
             private set => lifecycleStatus = value;
         }
 
+        [JsonProperty]
         public string[] Tags { get; set; }
 
         public int BasketSavedItemId { get; set; }

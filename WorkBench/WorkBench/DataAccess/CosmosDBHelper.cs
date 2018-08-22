@@ -223,6 +223,10 @@ namespace WorkBench.DataAccess
             
         }
 
+        public static async Task<ResourceResponse<Document>> ReadDocumentAsync<T>(ICollectionContext context, T document) where T : Document, IPartitionedDocument
+        {
+            return await ReadDocumentAsync(context, document.Id, document.PartitionKeyValue);
+        }
         public static async Task<ResourceResponse<Document>> ReadDocumentAsync(ICollectionContext context, String documentId
             , object partitionKeyValue = null
             )
@@ -257,7 +261,8 @@ namespace WorkBench.DataAccess
                 , new FeedOptions()
                 {
                     PartitionKey = PartitionKeyValue is null ? null : new PartitionKey(PartitionKeyValue),
-                    PopulateQueryMetrics = true
+                    PopulateQueryMetrics = true,
+                    EnableCrossPartitionQuery = true
                 }
                 )
                 .AsDocumentQuery();
@@ -348,7 +353,7 @@ namespace WorkBench.DataAccess
                     //}
                 })
                     .ContinueWith(tsk => context.ResponseProcessor.ProcessResourceResponse(
-                    String.Format("Upsert Document id ({0}), partition ({1})", doc.Id, doc.Id)
+                    String.Format("Upsert Document id ({0}), partition ({1})", doc.Id, doc.PartitionKeyValue)
                     , tsk)
                  );
 

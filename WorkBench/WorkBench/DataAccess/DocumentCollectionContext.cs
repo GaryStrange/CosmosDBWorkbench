@@ -38,8 +38,8 @@ namespace WorkBench.DataAccess
 
         private DocumentCollection CreateContextIfNotExists()
         {
-            //CosmosDbHelper.CreateDatabaseIfNotExists(this.Client, this.Config.databaseName)
-            //    .Wait();
+            CosmosDbHelper.CreateDatabaseIfNotExists(this.Client, this.Config.databaseName)
+                .Wait();
 
             var c = CosmosDbHelper.CreateDocumentCollectionIfNotExists(
                 this.Client

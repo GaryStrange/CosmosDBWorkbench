@@ -10,19 +10,19 @@ namespace WorkBench.Schema
 {
     public class WishList : Document, IPartitionedDocument
     {
-        [JsonProperty]
+        [JsonProperty(PropertyName = "uuid")]
         public string CustomerId { get; set; }
 
         [JsonProperty]
         public string Name { get; set; }
 
         [JsonProperty]
-        public Wish[] Wishes { get; set; }
+        public List<Wish> Wishes { get; set; }
 
         [JsonProperty(PropertyName = "_ts")]
         public int? TTL { get; set; }
 
-        public object PartitionKeyValue => this.CustomerId;
+        public object PartitionKeyValue { get { return this.CustomerId; } set { this.CustomerId = value.ToString(); } }
     }
 
     public class Wish
