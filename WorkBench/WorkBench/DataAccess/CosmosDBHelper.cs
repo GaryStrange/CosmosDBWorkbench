@@ -315,6 +315,17 @@ namespace WorkBench.DataAccess
             return (dynamic)response.Resource;
         }
 
+        public static async Task<Document> CreateObjectAsync(ICollectionContext context, object doc)
+        {
+            var response = await context.Client.CreateDocumentAsync(context.CollectionUri, doc
+                            )
+                            .ContinueWith(tsk => context.ResponseProcessor.ProcessResourceResponse(
+                                String.Format("Create Document id ({0})", null)
+                                , tsk)
+                                );
+            return (dynamic)response.Resource;
+        }
+
         public static async Task<T> CreateDocumentAsync<T>(ICollectionContext context, T doc) where T : Resource
         {
             var response = await context.Client.CreateDocumentAsync(context.CollectionUri, doc
@@ -336,6 +347,18 @@ namespace WorkBench.DataAccess
         {
             var response = context.Client.UpsertDocumentAsync(context.CollectionUri, doc).Result;
             Debug.WriteLine(String.Format("Upsert response request charge: {0}", response.RequestCharge));
+            return (dynamic)response.Resource;
+        }
+
+        public static async Task<Document> UpsertObjectAsync(ICollectionContext context, object doc, object PartitionKeyValue)
+        {
+            ResourceResponse<Document> response = await context.Client.UpsertDocumentAsync(context.CollectionUri, doc
+                )
+                    .ContinueWith(tsk => context.ResponseProcessor.ProcessResourceResponse(
+                    String.Format("Upsert Document id ({0}), partition ({1})", null, null)
+                    , tsk)
+                 );
+
             return (dynamic)response.Resource;
         }
 

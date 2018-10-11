@@ -1,0 +1,29 @@
+{
+  "ForEventSourcingSnapshot": {
+    "EndPointUrl": "https://workbench.documents.azure.com:443/",
+    "AuthorizationKey": "ezWnS1n99wkUstfhaWBdl0Ox0dPJAcdlMqIflwIdidwvzWTkb5Yl52Xy2J0oiC7UAYHKm7VrZ9glYirb9eFJmg==",
+    "DatabaseName": "EventSourcingDB",
+    "CollectionName": "Snapshot",
+    "PartitionKeyPath": "",
+    "ConsistencyLevel": "ConsistentPrefix",
+    "OfferThroughput": "800"
+  },
+  "ForEventSourcing": {
+    "EndPointUrl": "https://workbench.documents.azure.com:443/",
+    "AuthorizationKey": "ezWnS1n99wkUstfhaWBdl0Ox0dPJAcdlMqIflwIdidwvzWTkb5Yl52Xy2J0oiC7UAYHKm7VrZ9glYirb9eFJmg==",
+    "DatabaseName": "EventSourcingDB",
+    "CollectionName": "Events",
+    "PartitionKeyPath": "/StreamId",
+    "ConsistencyLevel": "ConsistentPrefix",
+    "OfferThroughput": "800"
+  },
+  "ForSavedItemsConfig": {
+    "EndPointUrl": "https://workbench.documents.azure.com:443/",
+    "AuthorizationKey": "ezWnS1n99wkUstfhaWBdl0Ox0dPJAcdlMqIflwIdidwvzWTkb5Yl52Xy2J0oiC7UAYHKm7VrZ9glYirb9eFJmg==",
+    "DatabaseName": "SavedItemsDB",
+    "CollectionName": "SavedItemsCollection",
+    "PartitionKeyPath": "/uuId",
+    "ConsistencyLevel": "BoundedStaleness",
+    "OfferThroughput": "400"
+  }
+}

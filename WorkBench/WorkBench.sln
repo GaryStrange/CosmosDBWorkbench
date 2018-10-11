@@ -5,7 +5,9 @@ VisualStudioVersion = 15.0.27004.2005
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkBench", "WorkBench\WorkBench.csproj", "{7776991B-C2D1-41C3-B3C2-DB980E228295}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CosmosDBClient", "CosmosDBClient\CosmosDBClient.csproj", "{19F4DBF2-5270-4E4D-92C3-67F349F368BD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CosmosDBClient", "CosmosDBClient\CosmosDBClient.csproj", "{19F4DBF2-5270-4E4D-92C3-67F349F368BD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventSourcing", "EventSourcing\EventSourcing.csproj", "{531B3877-A6AA-45AF-AB71-B57C654AEABF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{19F4DBF2-5270-4E4D-92C3-67F349F368BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19F4DBF2-5270-4E4D-92C3-67F349F368BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19F4DBF2-5270-4E4D-92C3-67F349F368BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{531B3877-A6AA-45AF-AB71-B57C654AEABF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{531B3877-A6AA-45AF-AB71-B57C654AEABF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{531B3877-A6AA-45AF-AB71-B57C654AEABF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{531B3877-A6AA-45AF-AB71-B57C654AEABF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
